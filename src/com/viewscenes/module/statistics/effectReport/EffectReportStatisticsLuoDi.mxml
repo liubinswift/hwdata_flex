@@ -1,0 +1,532 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" 
+		  xmlns:system="com.morcha4.frame.system.*"
+		  width="100%" height="100%" 
+		  xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+		  creationComplete="init();" xmlns:comp="com.viewscenes.global.comp.*" xmlns:global="com.viewscenes.global.*" xmlns:checkbox="com.viewscenes.global.comp.checkbox.*" xmlns:contaners="com.morcha4.ui.contaners.*" xmlns:flipBar="com.viewscenes.utils.flipBar.*" xmlns:chart="chart.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+		<!-- 效果报告统计统计 -->
+	</fx:Declarations>
+	<system:layout>
+		<s:VerticalLayout/>
+	</system:layout>
+	<fx:Script>
+		<![CDATA[
+			import chart.FusionCharts;
+			
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+			import com.viewscenes.utils.timecomp.DateUtil;
+			
+			import mx.collections.ArrayCollection;
+			import mx.core.UIComponent;
+			private var reportID:String = "";//报表id
+			
+			//遥控站
+			[Bindable]
+			private var ykzArr:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			private var ruleArr:ArrayCollection = new ArrayCollection([ 
+				{label:"按播音时间", data:"1"},  
+				{label:"按半小时", data:"2"}, 
+				{label:"按一小时", data:"3"} ]);
+			
+			[Bindable] private var result11Arr:ArrayCollection = new ArrayCollection();
+//			[Bindable] private var result21Arr:ArrayCollection = new ArrayCollection();
+//			[Bindable] private var result22Arr:ArrayCollection = new ArrayCollection();
+//			[Bindable] private var result23Arr:ArrayCollection = new ArrayCollection();
+//			[Bindable] private var result31Arr:ArrayCollection = new ArrayCollection();
+//			[Bindable] private var result32Arr:ArrayCollection = new ArrayCollection();
+//			[Bindable] private var result41Arr:ArrayCollection = new ArrayCollection();
+			[Bindable] private var result51Arr:ArrayCollection = new ArrayCollection();
+			[Bindable] private var result61Arr:ArrayCollection = new ArrayCollection();
+			[Bindable] private var result71Arr:ArrayCollection = new ArrayCollection();
+			private const reportType:String = "1004";//报表类型 海外落地节目效果统计
+			private var isImporting:int = 0;
+			
+			/**
+			 * 
+			 * 遥控站
+			 * */
+			private function getYkz():void{
+				var ykzArrTemp:ArrayCollection = DataManager.getHeadendByState("all","all",true);
+				for(var i=0;i<ykzArrTemp.length;i++){
+					var obj:Object = new Object();
+					obj.label = ykzArrTemp.getItemAt(i).shortname;
+					obj.value = ykzArrTemp.getItemAt(i).code;
+					ykzArr.addItem(obj);
+				}
+			}
+//			
+			private function init():void{
+				this.reportIndexList.callBackDetailMethod=callBackDetailMethod;//报表详细显示方法
+				this.reportIndexList.callBackExportMethod=callBackExportMethod;//报表导出方法
+				this.reportIndexList.callBackGetParamMethod=callBackGetParamMethod;//取得查询报表时需要的条件的方法
+				this.reportIndexList.reportType=reportType;//报表类型.
+				selectAll();
+				getYkz();
+			}
+			
+			
+			/**
+			 * 统计转播机构总体播出效果统计
+			 */
+			private function tongjiStation():void{
+				result2;
+				DataManager.stationBeanAll;
+			}
+			/**
+			 * 导出excel
+			 */
+			protected function callBackExportMethod():void
+			{
+				var url:String="com.viewscenes.web.statistics.effectReport.EffectReportStatistics";
+				var func:String="doExcel";
+				
+				var head:String = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r';
+				head += '<msg type="'+url+'" function="'+func+'">\r';
+				var xmlText:String = head;
+				
+				if(this.reportIndexList.reportBean==null){
+					MM.show("请查询报表后再导出！");
+					return;
+				}
+				xmlText += "<reportId>"+this.reportIndexList.reportBean.report_id+"</reportId>";
+				xmlText += "<report_type>2</report_type>";//报表类型  1：海外落地效果报告统计  2：海外落地效果报告统计
+				xmlText += "<starttime>"+this.reportIndexList.starttime+"</starttime>";
+				xmlText += "<endtime>"+this.reportIndexList.endtime+"</endtime>";
+				xmlText += "</msg>";
+				
+				flash.external.ExternalInterface.call("toExcel",xmlText);
+			}
+			/**
+			 * 取得查询报表时需要的条件的方法
+			 */
+			private function callBackGetParamMethod():Object{
+				var obj:Object = new Object();
+				var subReportType = "";
+				var temp:String = "";
+				temp = this.conditon1.selected?"11,":"";
+				subReportType += temp;
+				temp = this.conditon2.selected?"21,22,23,":"";
+				subReportType += temp;
+				temp = this.conditon3.selected?"31,32,":"";
+				subReportType += temp;
+				temp = this.conditon4.selected?"41,":"";
+				subReportType += temp;
+				temp = this.conditon5.selected?"51,":"";
+				subReportType += temp;
+				temp = this.conditon6.selected?"61,":"";
+				subReportType += temp;
+				temp = this.conditon7.selected?"71,":"";
+				subReportType += temp;
+				
+				if(subReportType!=""){
+					subReportType = subReportType.substring(0,subReportType.length-1);
+				}
+				obj.subReportType = subReportType;
+				
+				obj.headcodes = ykz.getText("value");
+				obj.rule = rule.selectedItem.data;				
+				
+				if(obj.headcodes != ""){
+					obj.headcodes += ",";
+				}
+				return obj;
+			}
+			private var isSelectAll:Boolean = false;
+			/**
+			 * 全选统计内容
+			 */
+			private function selectAll():void{
+				isSelectAll = !isSelectAll;
+				conditon1.selected = isSelectAll;
+				conditon2.selected = isSelectAll;
+				conditon3.selected = isSelectAll;
+				conditon4.selected = isSelectAll;
+				conditon5.selected = isSelectAll;
+				conditon6.selected = isSelectAll;
+				conditon7.selected = isSelectAll;
+			}
+			
+			private function visableComp(comp:UIComponent,obj:Object=null):void{
+				if(obj==null){
+					comp.visible = !comp.visible;
+					comp.includeInLayout = comp.visible;
+				} else{
+					comp.visible = obj.visboo;
+					comp.includeInLayout = obj.visboo;
+				}
+			}
+			
+			
+			/**
+			 * 查询报表的详细数据
+			 **/
+			public function callBackDetailMethod(reportDesc:Object):void{
+				result11Arr.removeAll();
+				//				result21Arr.removeAll();
+				//				result22Arr.removeAll();
+				//				result23Arr.removeAll();
+				//				result31Arr.removeAll();
+				//				result32Arr.removeAll();
+				//				result41Arr.removeAll();
+				result51Arr.removeAll();
+				result61Arr.removeAll();
+				result71Arr.removeAll();
+				var list:ArrayCollection = new ArrayCollection();
+				if(reportDesc != null){
+					list = reportDesc.resultList as ArrayCollection;
+				}
+				var rArr1:ArrayCollection = new ArrayCollection();
+				//				var rArr21:ArrayCollection = new ArrayCollection();
+				//				var rArr22:ArrayCollection = new ArrayCollection();
+				//				var rArr23:ArrayCollection = new ArrayCollection();
+				//				var rArr31:ArrayCollection = new ArrayCollection();
+				//				var rArr32:ArrayCollection = new ArrayCollection();
+				//				var rArr41:ArrayCollection = new ArrayCollection();
+				var rArr51:ArrayCollection = new ArrayCollection();
+				var rArr61:ArrayCollection = new ArrayCollection();
+				var rArr71:ArrayCollection = new ArrayCollection();
+				var xml21:String = "";
+				var xml31:String = "";
+				var xml41:String = "";
+				for(var i=0;i<list.length;i++){
+					var item:Object = list.getItemAt(i);
+					if(item.sub_report_type == "11"){
+						rArr1.addItem(item);
+					} else if(item.sub_report_type == "21"){
+						xml21 = item.xml;
+						//						rArr21.addItem(item);
+					} else if(item.sub_report_type == "22"){
+						//						rArr22.addItem(item);
+					} else if(item.sub_report_type == "23"){
+						//						rArr23.addItem(item);
+					} else if(item.sub_report_type == "31"){
+						xml31 = item.xml;
+						//						rArr31.addItem(item);
+					} else if(item.sub_report_type == "32"){
+						//						rArr32.addItem(item);
+					} else if(item.sub_report_type == "41"){
+						xml41 = item.xml;
+						//						rArr41.addItem(item);
+					} else if(item.sub_report_type == "51"){
+						rArr51.addItem(item);
+					} else if(item.sub_report_type == "61"){
+						rArr61.addItem(item);
+					} else if(item.sub_report_type == "71"){
+						rArr71.addItem(item);
+					}
+					
+				}
+				var obj1:Object = new Object();
+				obj1.resultList = rArr1;
+				obj1.resultTotal = rArr1.length;
+				pagebar1.m_queryProcess(obj1,funcResult1);
+				
+				var obj7:Object = new Object();
+				obj7.resultList = rArr71;
+				obj7.resultTotal = rArr71.length;
+				pagebar71.m_queryProcess(obj7,funcResult7);
+				
+				var fc21:FusionCharts = null;
+				var fc31:FusionCharts = null;
+				var fc41:FusionCharts = null;
+				if(result2.numElements==0){
+					fc21 = new FusionCharts();
+					fc21.height = 300;
+					fc21.percentWidth = 100;
+					fc21.FCChartType="Column3D";
+					fc21.FCFolder="fusioncharts";
+					result2.addElement(fc21);
+				} else {
+					fc21 = result2.getElementAt(0) as FusionCharts;
+				}
+				if(result3.numElements==0){
+					fc31 = new FusionCharts();
+					fc31.height = 300;
+					fc31.percentWidth = 100;
+					fc31.FCChartType="Column3D";
+					fc31.FCFolder="fusioncharts";
+					result3.addElement(fc31);
+				} else {
+					fc31 = result3.getElementAt(0) as FusionCharts;
+				}
+				if(result4.numElements==0){
+					fc41 = new FusionCharts();
+					fc41.height = 300;
+					fc41.percentWidth = 100;
+					fc41.FCChartType="Column3D";
+					fc41.FCFolder="fusioncharts";
+					result4.addElement(fc41);
+				} else {
+					fc41 = result4.getElementAt(0) as FusionCharts;
+				}
+				
+				if(xml21 != ""){
+					fc21.FCDataXML=xml21;
+					fc21.FCRender();
+				}
+				
+				if(xml31 != ""){
+					fc31.FCDataXML=xml31;
+					fc31.FCRender();
+				}
+				
+				if(xml41 != ""){
+					fc41.FCDataXML=xml41;
+					fc41.FCRender();
+				}
+				
+				//				result11Arr = rArr1;
+				//				result31Arr = rArr31;
+				//				result32Arr = rArr32;
+				//				result41Arr = rArr41;
+				result51Arr = rArr51;
+				result61Arr = rArr61;
+				//				result71Arr = rArr71;
+				
+				visableComp(result11,result11Arr.length==0?{visboo:false}:{visboo:true});
+				result11Button.selected = (result11Arr.length==0?false:true);
+				visableComp(result2,xml21 == ""?{visboo:false}:{visboo:true});
+				result2Button.selected = (result2,xml21 == ""?false:true);
+				visableComp(result3,xml31 == ""?{visboo:false}:{visboo:true});
+				result3Button.selected = (xml31 == ""?false:true);
+				visableComp(result4,xml41 == ""?{visboo:false}:{visboo:true});
+				result41Button.selected = (xml41 == ""?false:true);
+				visableComp(result51,result51Arr.length==0?{visboo:false}:{visboo:true});
+				result51Button.selected = (result51Arr.length==0?false:true);
+				visableComp(result61,result61Arr.length==0?{visboo:false}:{visboo:true});
+				result61Button.selected = (result61Arr.length==0?false:true);
+				visableComp(result71,result71Arr.length==0?{visboo:false}:{visboo:true});
+				result71Button.selected = (result71Arr.length==0?false:true);
+			}
+			
+			private function funcResult1(arr:ArrayCollection):void{
+				result11Arr = arr;
+			}
+			private function funcResult7(arr:ArrayCollection):void{
+				result71Arr = arr;
+			}
+			
+		]]>
+	</fx:Script>
+	
+	
+	<s:HGroup width="100%" verticalAlign="middle">
+		<s:Label text="遥控站"/><!--s:ComboBox id="ykz" dataProvider="{ykzArr}" labelField="shortname" width="80"/-->
+		<checkbox:CheckDropList id="ykz" dataProvider="{ykzArr}" rowCount="15"/>
+		<s:CheckBox label="全选" id="seleAll" click="selectAll();" selected="true"/>
+		<s:CheckBox label="海外落地广播效果统计" id="conditon1"/>
+		<s:Label text="统计规则"/>
+		<s:DropDownList dataProvider="{ruleArr}" id="rule" selectedIndex="1"/>
+		
+		<s:CheckBox label="各转播机构播出效果统计" id="conditon2"/>
+		<s:CheckBox label="各种语言播出效果统计" id="conditon3"/>
+		<s:CheckBox label="各地区、各大洲、可听率统计" id="conditon4"/>
+	</s:HGroup>
+	<s:HGroup width="100%" verticalAlign="middle">
+		<s:CheckBox label="各遥控站、各地区、各大洲、可保证收听频时统计" id="conditon5"/>
+		<s:CheckBox label="各月各遥控站、各地区、各大洲和全球可听率对比" id="conditon6"/>
+		<s:CheckBox label="各频率可听度满意程度和可听率统计" id="conditon7"/>
+		
+	</s:HGroup>
+	<s:HGroup width="100%" verticalAlign="middle">
+		<comp:ReportIndexList id="reportIndexList" width="100%" height="120"/>
+		
+	</s:HGroup>
+	<s:Label text="正在查询，请稍候..." id="pagebarReportDetailTrip" width="100%" textAlign="center" visible="false" includeInLayout="false" />
+	<s:VGroup width="100%" gap="0">
+		<s:Group width="100%"
+				 click="visableComp(result11)">
+			<s:ToggleButton styleName="title" width="100%" id="result11Button"/>
+			<s:Label text="海外落地广播效果统计"
+					 paddingTop="10"
+					 paddingLeft="30" 
+					 fontSize="14"
+					 fontFamily="微软雅黑"/>
+		</s:Group>
+		<s:VGroup width="100%" height="100%"  id="result11" visible="false" includeInLayout="false">
+			<s:DataGrid width="100%" height="300"  id="result11aa"    textAlign="center"  dataProvider="{result11Arr}"  styleName="effect">
+				<s:columns>
+					<s:ArrayCollection>
+						<s:GridColumn dataField="play_time"  headerText="播音时间" width="90"/>
+						<s:GridColumn dataField="language_name"  headerText="语言" />
+						<s:GridColumn dataField="freq"  headerText="频率" />
+						<s:GridColumn dataField="transmit_station"  headerText="转播机构" />
+						<s:GridColumn dataField="transmit_direction"  headerText="发射方向" />
+						<s:GridColumn dataField="transmit_power"  headerText="发射功率" />
+						<s:GridColumn dataField="service_area"  headerText="服务区" />
+						<s:GridColumn dataField="receive_code"  headerText="收测地点" />
+						<s:GridColumn dataField="receive_count"  headerText="收测次数" />
+						<s:GridColumn dataField="fen5"  headerText="5"/>
+						<s:GridColumn dataField="fen4"  headerText="4" />
+						<s:GridColumn dataField="fen3"  headerText="3" />
+						<s:GridColumn dataField="fen2"  headerText="2" />
+						<s:GridColumn dataField="fen1"  headerText="1" />
+						<s:GridColumn dataField="fen0"  headerText="0" />
+						<s:GridColumn dataField="listen"  headerText="可听率%" />
+						<s:GridColumn dataField="listen_middle"  headerText="可听度中值" />
+						<s:GridColumn dataField="bak"  headerText="备注" />
+					</s:ArrayCollection>
+				</s:columns>
+			</s:DataGrid>
+			<!--分页组件所在地-->
+			<flipBar:PageBar  id="pagebar1" rowConutOfPage="10" totalPageQuery="100" height="20"/>
+		</s:VGroup>
+	</s:VGroup>
+	<s:VGroup width="100%"  gap="0" >
+		<s:Group width="100%"
+				 click="visableComp(result2)">
+			
+			<s:ToggleButton styleName="title"  width="100%" id="result2Button"/>
+			<s:Label text="各转播机构播出效果统计"
+					 paddingTop="10"
+					 paddingLeft="30" 
+					 fontSize="14"
+					 fontFamily="微软雅黑"/>
+		</s:Group>
+		<contaners:SimpleContainer	 width="100%" height="300" id="result2"  visible="false" includeInLayout="false">
+		</contaners:SimpleContainer>
+	</s:VGroup>
+	<s:VGroup width="100%"  gap="0" >
+		<s:Group width="100%"
+				 click="visableComp(result3)">
+			
+			<s:ToggleButton styleName="title"  width="100%" id="result3Button"/>
+			<s:Label text="各种语言播出效果统计"
+					 paddingTop="10"
+					 paddingLeft="30" 
+					 fontSize="14"
+					 fontFamily="微软雅黑"/>
+		</s:Group>
+		
+		<contaners:SimpleContainer	 width="100%" height="300" id="result3"  visible="false" includeInLayout="false">
+		</contaners:SimpleContainer>
+	</s:VGroup>
+	<s:VGroup width="100%"  gap="0" >
+		<s:Group width="100%"
+				 click="visableComp(result4)">
+			
+			<s:ToggleButton styleName="title"  width="100%" id="result41Button"/>
+			<s:Label text="各地区、各大洲、可听率统计"
+					 paddingTop="10"
+					 paddingLeft="30" 
+					 fontSize="14"
+					 fontFamily="微软雅黑"/>
+		</s:Group>
+		
+		<contaners:SimpleContainer	 width="100%" height="300" id="result4"  visible="false" includeInLayout="false">
+		</contaners:SimpleContainer>
+	</s:VGroup>
+	<s:VGroup width="100%"  gap="0" >
+		<s:Group width="100%"
+				 click="visableComp(result51)">
+			
+			<s:ToggleButton styleName="title"  width="100%" id="result51Button"/>
+			<s:Label text="各遥控站、各地区、各大洲、可保证收听频时统计"
+					 paddingTop="10"
+					 paddingLeft="30" 
+					 fontSize="14"
+					 fontFamily="微软雅黑"/>
+		</s:Group>
+		<mx:AdvancedDataGrid  width="100%" height="300"  id="result51"  textAlign="center" 
+							  visible="false" includeInLayout="false" dataProvider="{result51Arr}" styleName="effect" sortExpertMode="true">
+			<mx:groupedColumns>
+				<mx:AdvancedDataGridColumnGroup headerText="收听效果">
+					
+					<mx:AdvancedDataGridColumnGroup dataField="receive_name"  headerText="遥控站" />
+					<mx:AdvancedDataGridColumnGroup dataField="guarantee_freqhour"  headerText="保证收听频时" />
+					<mx:AdvancedDataGridColumnGroup dataField="basic_freqhour"  headerText="基本可收听频时" />
+					<mx:AdvancedDataGridColumnGroup dataField="sometimes_freqhour"  headerText="有时可收听频时" />
+					<mx:AdvancedDataGridColumnGroup dataField="no_receive_freqhour"  headerText="不可收听频时" />
+					<mx:AdvancedDataGridColumnGroup dataField="total_freqhour"  headerText="总频时" />
+					
+				</mx:AdvancedDataGridColumnGroup>
+			</mx:groupedColumns>
+		</mx:AdvancedDataGrid>
+	</s:VGroup>	
+	<s:VGroup width="100%"  gap="0" >
+		<s:Group width="100%"
+				 click="visableComp(result61)">
+			
+			<s:ToggleButton styleName="title"  width="100%"  id="result61Button"/>
+			<s:Label text="各月各遥控站、各地区、各大洲和全球可听率对比"
+					 paddingTop="10"
+					 paddingLeft="30" 
+					 fontSize="14"
+					 fontFamily="微软雅黑"/>
+		</s:Group>
+		<mx:AdvancedDataGrid  width="100%" height="300"  id="result61"  textAlign="center"  
+							  visible="false" includeInLayout="false"
+							  dataProvider="{result61Arr}" styleName="effect" sortExpertMode="true">
+			<mx:groupedColumns>
+				<mx:AdvancedDataGridColumnGroup headerText="各月可听率对比">
+					
+					<mx:AdvancedDataGridColumnGroup dataField="receive_name"  headerText="遥控站" />
+					<mx:AdvancedDataGridColumnGroup headerText="一月" dataField="month1" />
+					<mx:AdvancedDataGridColumnGroup headerText="二月" dataField="month2"/>
+					<mx:AdvancedDataGridColumnGroup headerText="三月" dataField="month3"/>
+					<mx:AdvancedDataGridColumnGroup headerText="四月" dataField="month4"/>
+					<mx:AdvancedDataGridColumnGroup headerText="五月" dataField="month5"/>
+					<mx:AdvancedDataGridColumnGroup headerText="六月" dataField="month6"/>
+					<mx:AdvancedDataGridColumnGroup headerText="七月" dataField="month7"/>
+					<mx:AdvancedDataGridColumnGroup headerText="八月" dataField="month8"/>
+					<mx:AdvancedDataGridColumnGroup headerText="九月" dataField="month9"/>
+					<mx:AdvancedDataGridColumnGroup headerText="十月" dataField="month10"/>
+					<mx:AdvancedDataGridColumnGroup headerText="十一月" dataField="month11"/>
+					<mx:AdvancedDataGridColumnGroup headerText="十二月" dataField="month12"/>
+					
+				</mx:AdvancedDataGridColumnGroup>
+			</mx:groupedColumns>
+		</mx:AdvancedDataGrid>
+	</s:VGroup>
+	
+	<s:VGroup width="100%"  gap="0" >
+		<s:Group width="100%"
+				 click="visableComp(result71)">
+			
+			<s:ToggleButton styleName="title"  width="100%"  id="result71Button"/>
+			<s:Label text="各频率可听度满意程度和可听率统计"
+					 paddingTop="10"
+					 paddingLeft="30" 
+					 fontSize="14"
+					 fontFamily="微软雅黑"/>
+		</s:Group>
+		
+		<s:VGroup  width="100%" height="100%"  id="result71" visible="false" includeInLayout="false">
+			<mx:AdvancedDataGrid  width="100%" height="300"  id="result71aa"  textAlign="center"  
+							  dataProvider="{result71Arr}" styleName="effect" sortExpertMode="true">
+			<mx:groupedColumns>
+				<mx:AdvancedDataGridColumnGroup dataField="play_time"  headerText="播音时间" width="90"/>
+				<mx:AdvancedDataGridColumnGroup dataField="language_name"  headerText="语言" />
+				<mx:AdvancedDataGridColumnGroup dataField="freq"  headerText="频率" />
+				<mx:AdvancedDataGridColumnGroup dataField="transmit_station"  headerText="转播机构" />
+				<mx:AdvancedDataGridColumnGroup dataField="service_area"  headerText="服务区" />
+				<!--mx:AdvancedDataGridColumnGroup dataField="receive_code"  headerText="收测地点" /-->
+				<mx:AdvancedDataGridColumnGroup dataField="receive_count"  headerText="收测次数" />
+				<mx:AdvancedDataGridColumnGroup headerText="频率可听率统计表">
+					<mx:AdvancedDataGridColumnGroup headerText="可听度满意程度">
+						<mx:AdvancedDataGridColumn headerText="0" dataField="fen0" />
+						<mx:AdvancedDataGridColumn headerText="1" dataField="fen1" />
+						<mx:AdvancedDataGridColumn headerText="2" dataField="fen2"/>
+						<mx:AdvancedDataGridColumn headerText="3" dataField="fen3"/>
+						<mx:AdvancedDataGridColumn headerText="4" dataField="fen4"/>
+						<mx:AdvancedDataGridColumn headerText="5" dataField="fen5"/>
+					</mx:AdvancedDataGridColumnGroup>
+				</mx:AdvancedDataGridColumnGroup>
+				<mx:AdvancedDataGridColumnGroup dataField="average_listens" headerText="可听率%"/>
+				<mx:AdvancedDataGridColumnGroup dataField="bak"  headerText="备注" />
+			</mx:groupedColumns>
+		</mx:AdvancedDataGrid>
+		<!--分页组件所在地-->
+		<flipBar:PageBar  id="pagebar71" rowConutOfPage="10" totalPageQuery="100" height="20"/>
+	</s:VGroup>
+	</s:VGroup>
+	
+</system:BasePage>

@@ -1,0 +1,487 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 width="100%" height="100%"
+				 xmlns:system="com.morcha4.frame.system.*"
+				 creationComplete="init();" 
+				 xmlns:timecomp="com.viewscenes.utils.timecomp.*" 
+				 xmlns:checkbox="com.viewscenes.global.comp.checkbox.*"
+				 xmlns:ykz="com.viewscenes.module.statistics.ykz.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+		<s:RadioButtonGroup id="statCheckGrp" />
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.frame.TempPage;
+			import com.morcha4.frame.system.AdvancedEvent;
+			import com.morcha4.frame.system.EventBus;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.utils.StringTool;
+			import com.viewscenes.global.comp.MM;
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.olap.aggregators.CountAggregator;
+			
+			import spark.events.IndexChangeEvent;
+			//遥控站
+			[Bindable]
+			private var ykzArr1:ArrayCollection = new ArrayCollection();
+			//遥控站语言
+			[Bindable]
+			private var languageArr:ArrayCollection = new ArrayCollection();
+			
+			//遥控站语言
+			[Bindable]
+			private var languageArr2:ArrayCollection = new ArrayCollection();
+			//gird
+			[Bindable]
+			private var gridDataArr:ArrayCollection = new ArrayCollection();
+			//gird
+			[Bindable]
+			private var languageDataArr:ArrayCollection = new ArrayCollection();
+			//gird
+			[Bindable]
+			private var stationDataArr:ArrayCollection = new ArrayCollection();
+			
+			private function init():void{
+				EventBus.addEventListener("showVG",show);
+				getLanguage();
+				getYkz();
+//				getLanguageList();
+			}
+			private function show(e:AdvancedEvent):void{
+				this.vg1.visible=true;
+				this.vg1.includeInLayout=true;
+			}
+			/**
+			 * 
+			 * 遥控站
+			 * */
+			private function getYkz():void{
+				var ykzArr11:ArrayCollection = DataManager.getHeadendByState("all","102",true);
+				for(var i:int=0;i<ykzArr11.length;i++){
+					var obj:Object = new Object();
+					obj.label = ykzArr11.getItemAt(i).shortname;
+					obj.value = ykzArr11.getItemAt(i).code;
+					ykzArr1.addItem(obj);	 			
+				}
+			}
+//			/**
+//			 * 
+//			 * 节目
+//			 * */
+//			private function getLanguageList():void{
+//				var obj:Object = new Object;
+//				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getLanguageList",obj,getLanguageListBack,DataManager.showErrorMessageBack));
+//			}
+//			
+//			private function getLanguageListBack(arr:ArrayCollection):void{
+//				languageArr.removeAll();
+//				languageArr = arr;
+//				languageArr.addItemAt({language_name:"全部",language_id:null},0);
+//				language.selectedIndex = 0;
+//			}
+			
+			/**
+			 * 
+			 * 遥控站
+			 * */
+			private function getLanguage():void{
+				var languageArr1:ArrayCollection = DataManager.languageBeanAll;
+				for(var i:int=0;i<languageArr1.length;i++){
+					var obj:Object = new Object();
+					obj.label = languageArr1.getItemAt(i).language_name;
+					obj.value = languageArr1.getItemAt(i).language_id;
+					if (obj.label.indexOf("全部")>-1)
+						continue;
+					languageArr.addItem(obj);
+					
+				}
+
+				languageArr2 = StringTool.clone(languageArr);
+				languageArr2.removeItemAt(0);
+			}
+			
+			
+			
+			protected function statType_changeHandler(event:IndexChangeEvent):void
+			{
+				// TODO Auto-generated method stub
+				if (event.currentTarget.selectedItem.data == "统计"){
+					btn1.visible=true;
+					btn1.includeInLayout=true;
+					compareVGroup.visible = false;
+					compareVGroup.includeInLayout = false;
+					
+					ykzCanvas.visible = true;
+					ykzCanvas.includeInLayout = true;
+					
+					a.visible = true;
+					a.includeInLayout = true;
+					a.selected = true;
+					
+					b.visible = false;
+					b.includeInLayout = false;
+					b.selected = false;
+					
+					c.enabled=false;
+					c.selected = false;
+					
+					language_single.visible = false;
+					language_single.includeInLayout = false;
+					
+					language.visible = true;
+					language.includeInLayout = true;
+					showTips(serviceareaGrid,false,"");
+					showTips(stationGrid,false,"");
+					showTips(ykzLanguageGrid,true,"");
+					
+				}else{
+					btn1.visible=false;
+					btn1.includeInLayout=false;
+					compareVGroup.visible = true;
+					compareVGroup.includeInLayout = true;
+					
+					ykzCanvas.visible = false;
+					ykzCanvas.includeInLayout = false;
+					a.visible = false;
+					a.includeInLayout = false;
+					a.selected = false;
+					
+					b.visible = true;
+					b.includeInLayout = true;
+					b.selected = true;
+					c.visible = true;
+					c.includeInLayout = true;
+					c.selected = true;
+					
+					language.visible = false;
+					language.includeInLayout = false;
+					
+					language_single.visible = true;
+					language_single.includeInLayout = true;
+					showTips(ykzLanguageGrid,false,"");
+					showTips(serviceareaGrid,true,"");
+					showTips(stationGrid,true,"");
+					
+					
+				}
+				
+			}
+			
+			protected function clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				
+				if (!b.selected && !c.selected){
+					event.currentTarget.selected = true;
+					return;
+				}
+				if (event.currentTarget.id =="b"){   
+					serviceareaCanvas.visible = event.currentTarget.selected;
+					serviceareaCanvas.includeInLayout = event.currentTarget.selected;
+				}else {
+					stationCanvas.visible = event.currentTarget.selected;
+					stationCanvas.includeInLayout = event.currentTarget.selected;
+				}
+			}
+			
+			
+			/**
+			 * 绑定参数
+			 */ 
+			private function bandparam():Object{
+				var tmpcodes:String = "";
+				if(ykz.getText("label")!=""){
+					var codes:Array = ykz.getText("label").split(',');
+					
+					if(codes.length>0){
+						for(var i:int=0;i<codes.length;i++){
+							tmpcodes += codes[i]+",";
+						}
+						tmpcodes = (tmpcodes.lastIndexOf(',')==tmpcodes.length-1?(tmpcodes.substr(0,tmpcodes.length-1)):tmpcodes);
+					}
+				}
+				var obj:Object = new Object;
+				obj.headcode=tmpcodes;
+				obj.language_ids = statType.selectedIndex==0?language.getText("value").toString():language_single.selectedItem.value;
+				obj.startDate = startdatetime.text;
+				obj.endDate = enddatetime.text;
+				obj.statType = statType.selectedItem.data;
+				obj.fields = ((a.selected?'a':'')+(b.selected?'b':'')+(c.selected?'c':''));
+				
+				return obj;
+			}
+			
+			
+			protected function button1_clickHandler(event:MouseEvent):void
+			{
+				var starttime:String= startdatetime.text;
+				var endtime:String= enddatetime.text;
+				if(starttime>endtime){
+					MM.show("开始时间不能晚于结束时间!!");
+					return;
+				}
+				
+				
+				var obj:Object = bandparam();
+//				var obj:Object = new Object;
+////				obj.headcode = ykz.selectedItem.code;
+//				obj.language_ids = statType.selectedIndex==0?language.getText("value").toString():language_single.selectedItem.value;
+//				obj.startDate = startdatetime.text;
+//				obj.endDate = enddatetime.text;
+//				obj.statType = statType.selectedItem.data;
+//				obj.fields = ((a.selected?'a':'')+(b.selected?'b':'')+(c.selected?'c':''));
+				
+				
+				if (obj.language_ids == ""){
+					DataManager.showErrorMessage("请选择要统计的语言");
+					statType.selectedIndex==0?language.setFocus():language_single.setFocus();
+					return;
+				}
+				
+				if (a.selected)
+					gridDataArr.removeAll();
+					showTips(ykzLanguageGrid,true,"正在统计,请稍候...");
+				if (b.selected)
+					languageDataArr.removeAll();
+					showTips(serviceareaGrid,true,"正在统计,请稍候...");
+				if (c.selected)
+					stationDataArr.removeAll();
+					showTips(stationGrid,true,"正在统计,请稍候...");
+				submit.enabled = false;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.statistics.ykz.EffectStatByYkz","statEffectByYkzLanguage",obj,statEffectByYkzLanguageBack,DataManager.showErrorMessageBack));
+			}
+			
+			
+			private function statEffectByYkzLanguageBack(obj:Object):void{
+				submit.enabled = true;
+				lanPic.xml=obj.xml;
+				if (obj.a.length == 0){
+					if (a.selected)
+						showTips(ykzLanguageGrid,true,"无统计结果...");
+				}else{
+					gridDataArr = obj.a;
+					if (a.selected)
+						showTips(ykzLanguageGrid,false,"");
+				}
+					
+				if (obj.b.length == 0)	{
+					if (b.selected)
+						showTips(serviceareaGrid,true,"无统计结果...");
+				}else{
+					languageDataArr = obj.b;
+					if (b.selected)
+						showTips(serviceareaGrid,false,"");
+				}
+				if (obj.c.length ==0){
+					if (c.selected)
+						showTips(stationGrid,true,"无统计结果...");
+				}else{
+					stationDataArr = obj.c;
+					if (c.selected)
+						showTips(stationGrid,false,"");
+				}
+					
+				
+				
+//				if (a.selected)
+//					showTips(ykzLanguageGrid,false,"");
+//				if (b.selected)
+//					showTips(serviceareaGrid,false,"");
+//				if (c.selected)
+//					showTips(stationGrid,false,"");
+//				
+//				
+//				gridDataArr = obj.a;
+//				languageDataArr = obj.b;
+//				stationDataArr = obj.c;
+			}
+			
+			
+			/**
+			 * 查询时提示信息
+			 */ 
+			private function showTips(grid:AdvancedDataGrid,b:Boolean,msg:String=""):void{
+				var tmp_label:Label = clew_label_ykz;
+				if (grid.id == "ykzLanguageGrid")
+					tmp_label = clew_label_ykz;
+				else if (grid.id == "serviceareaGrid")
+					tmp_label = clew_label_servicearea;
+				else
+					tmp_label = clew_label_station;
+				if (b == true){
+					tmp_label.y = grid.y+80;
+					tmp_label.visible = true;
+					tmp_label.includeInLayout = true;
+					tmp_label.text = msg;//"正在查询,请稍候...";
+				}else{
+					tmp_label.visible = false
+					tmp_label.includeInLayout = false;
+					tmp_label.text = "";
+				}
+			}
+			
+			protected function toExcel_clickHandler(event:MouseEvent):void
+			{
+				var starttime:String= startdatetime.text;
+				var endtime:String= enddatetime.text;
+				if(starttime>endtime){
+					MM.show("开始时间不能晚于结束时间!!");
+					return;
+				}
+				var obj:Object = bandparam();
+				
+				if (obj.language_ids==""){
+					DataManager.showErrorMessage("请选择要统计的语言");
+					statType.selectedIndex==0?language.setFocus():language_single.setFocus();
+					return;
+				}
+				
+				var url:String="com.viewscenes.web.statistics.ykz.EffectStatByYkz";
+				var func:String="statEffectByYkzLanguageToExcel";
+				
+				var head:String = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r';
+				head += '<msg type="'+url+'" function="'+func+'">\r';
+				var xmlText:String = head;
+				xmlText += "<headcode>"+obj.headcode+"</headcode>";
+				xmlText += "<language_ids>"+obj.language_ids+"</language_ids>";
+				xmlText += "<startDate>"+obj.startDate+"</startDate>";
+				xmlText += "<endDate>"+obj.endDate+"</endDate>";
+				xmlText += "<statType>"+obj.statType+"</statType>";
+				xmlText += "<fields>"+obj.fields+"</fields>";
+				xmlText += "</msg>";
+				flash.external.ExternalInterface.call("toExcel",xmlText);
+			}
+			
+			protected function submit_clickHandler():void
+			{
+				// TODO Auto-generated method stub
+				vg1.visible=false;
+				vg1.includeInLayout=false;
+				lanPic.visible=true;
+				lanPic.includeInLayout=true;
+				lanPic.setInfo();
+				
+			}
+		]]>
+	</fx:Script>
+	
+	
+	<s:VGroup id="vg1" width="100%" height="100%">
+		
+		<s:HGroup width="100%"  horizontalAlign="left"  paddingTop="5" verticalAlign="middle">
+			<s:DropDownList id="statType" change="statType_changeHandler(event)" selectedIndex="0" dataProvider="{new ArrayCollection([{label:'统计',data:'统计'},{label:'对比',data:'对比'}])}" width="80"/>
+			<s:Label text="收测时间  从"/>
+			<timecomp:TimeNew id="startdatetime" dateDisplay="date"/>
+			<s:Label text="到"/>
+			<timecomp:TimeNew id="enddatetime" dateDisplay="date"/>
+			
+			<s:CheckBox id="a" label="根据遥控站收测语言统计"  selected="true" enabled="false" />
+			<s:CheckBox id="b" label="根据语言服务区统计" selected="true" visible="false" includeInLayout="false" click="clickHandler(event)" />
+			
+			<s:CheckBox id="c" label="根据语言遥控站统计"  selected="true"  enabled="false" click="clickHandler(event)"  />
+			
+			<s:Label text="遥控站"/><checkbox:CheckDropList id="ykz"   dataProvider="{ykzArr1}"  width="120"/>
+			<s:Label text="语言"/>
+			<s:ComboBox id="language_single" visible="false" includeInLayout="false" requireSelection="true" selectedIndex="0" dataProvider="{languageArr2}"  width="80"/>
+			<checkbox:CheckDropList id="language" dataProvider="{languageArr}"/>
+			<s:Button buttonMode="true" id="submit" label="统计" click="button1_clickHandler(event)"/>
+			<s:Button buttonMode="true" id="toExcel" label="导出Excel" click="toExcel_clickHandler(event)"/>
+			<s:Button buttonMode="true" id="btn1" label="图形统计" click="submit_clickHandler()"/>
+		</s:HGroup>
+		
+		<s:VGroup width="100%" height="100%">
+			<mx:Canvas width="100%" height="100%" id="ykzCanvas">
+				<mx:AdvancedDataGrid width="100%" height="100%" id="ykzLanguageGrid" textAlign="center" dataProvider="{gridDataArr}"  showDataTips="true"  headerSortSeparatorSkin="mx.skins.ProgrammaticSkin">
+					<mx:groupedColumns>
+						<mx:AdvancedDataGridColumnGroup  textAlign="left">
+							<!--mx:AdvancedDataGridColumnGroup headerText="选择"/-->
+							<mx:AdvancedDataGridColumnGroup headerText="语言" width="80" dataField="language_name"/>
+							<mx:AdvancedDataGridColumnGroup headerText="频率数"  dataField="freqcount"/>
+							<mx:AdvancedDataGridColumnGroup headerText="频时数"  dataField="freqtime"/>
+							<mx:AdvancedDataGridColumnGroup headerText="服务区"   dataField="service_area"/>
+							<mx:AdvancedDataGridColumnGroup headerText="发射台"  dataField="station_name"/>
+							<mx:AdvancedDataGridColumnGroup headerText="遥控站"  dataField="headname"/>
+							<mx:AdvancedDataGridColumnGroup headerText="收测次数" dataField="receivecount"/>
+							<mx:AdvancedDataGridColumnGroup headerText="可保证收听频时数" dataField="goodfreqtime"/>
+							<mx:AdvancedDataGridColumnGroup headerText="可听率%" dataField="audible"/>
+							
+							<mx:AdvancedDataGridColumnGroup headerText="可听度满意程度" >
+								<mx:AdvancedDataGridColumn headerText="1"  width="50" dataField="audibility1"/>
+								<mx:AdvancedDataGridColumn headerText="2"  width="50" dataField="audibility2" />
+								<mx:AdvancedDataGridColumn headerText="3"  width="50" dataField="audibility3"/>
+								<mx:AdvancedDataGridColumn headerText="4"  width="50" dataField="audibility4"/>
+								<mx:AdvancedDataGridColumn headerText="5"  width="50" dataField="audibility5"/>
+							</mx:AdvancedDataGridColumnGroup>
+							
+						</mx:AdvancedDataGridColumnGroup>
+					</mx:groupedColumns>
+				</mx:AdvancedDataGrid>
+				<s:Label text="" color="0x000000" id="clew_label_ykz" y="{60}" width="100%" textAlign="center"  visible="false" includeInLayout="false" />
+			</mx:Canvas>
+			
+			
+			<s:VGroup id="compareVGroup" width="100%" height="100%" visible="false" includeInLayout="false">
+				<mx:Canvas width="100%" height="100%" id="serviceareaCanvas">
+					<mx:AdvancedDataGrid width="100%" height="100%" id="serviceareaGrid"  textAlign="center" dataProvider="{languageDataArr}"  showDataTips="true"  headerSortSeparatorSkin="mx.skins.ProgrammaticSkin">
+						<mx:groupedColumns>
+							<mx:AdvancedDataGridColumnGroup  textAlign="left">
+								<!--mx:AdvancedDataGridColumnGroup headerText="选择"/-->
+								<mx:AdvancedDataGridColumnGroup headerText="服务区" width="80" dataField="service_area"/>
+								<mx:AdvancedDataGridColumnGroup headerText="频率数" dataField="freqcount" />
+								<mx:AdvancedDataGridColumnGroup headerText="频时数" dataField="freqtime"/>
+								<mx:AdvancedDataGridColumnGroup headerText="遥控站" dataField="headname" />
+								<mx:AdvancedDataGridColumnGroup headerText="收测次数" dataField="receivecount"/>
+								<mx:AdvancedDataGridColumnGroup headerText="可保证收听频时数" dataField="goodfreqtime"/>
+								<mx:AdvancedDataGridColumnGroup headerText="可听率%" dataField="audible"/>
+								
+								<mx:AdvancedDataGridColumnGroup headerText="可听度满意程度" >
+									<mx:AdvancedDataGridColumn headerText="1" dataField="audibility1"  width="50" />
+									<mx:AdvancedDataGridColumn headerText="2" dataField="audibility2" width="50" />
+									<mx:AdvancedDataGridColumn headerText="3" dataField="audibility3" width="50" />
+									<mx:AdvancedDataGridColumn headerText="4" dataField="audibility4" width="50" />
+									<mx:AdvancedDataGridColumn headerText="5" dataField="audibility5" width="50" />
+								</mx:AdvancedDataGridColumnGroup>
+								
+							</mx:AdvancedDataGridColumnGroup>
+						</mx:groupedColumns>
+					</mx:AdvancedDataGrid>
+					<s:Label text="" color="0x000000" id="clew_label_servicearea" y="{60}" width="100%" textAlign="center"  visible="false" includeInLayout="false" />
+				</mx:Canvas>
+				
+				<mx:Canvas width="100%" height="100%" id="stationCanvas">
+					<mx:AdvancedDataGrid width="100%" height="100%" id="stationGrid"  textAlign="center" dataProvider="{stationDataArr}"  showDataTips="true">
+						<mx:groupedColumns>
+							<mx:AdvancedDataGridColumnGroup  textAlign="left">
+								<!--mx:AdvancedDataGridColumnGroup headerText="选择"/-->
+								<mx:AdvancedDataGridColumnGroup headerText="遥控站" width="80" dataField="headname"/>
+								<mx:AdvancedDataGridColumnGroup headerText="频率数"  dataField="freqcount"/>
+								<mx:AdvancedDataGridColumnGroup headerText="频时数" dataField="freqtime"/>
+								<mx:AdvancedDataGridColumnGroup headerText="服务区"  dataField="service_area"/>
+								<mx:AdvancedDataGridColumnGroup headerText="收测次数" dataField="receivecount"/>
+								<mx:AdvancedDataGridColumnGroup headerText="可保证收听频时数" dataField="goodfreqtime"/>
+								<mx:AdvancedDataGridColumnGroup headerText="可听率%" dataField="audible"/>
+								
+								<mx:AdvancedDataGridColumnGroup headerText="可听度满意程度" >
+									<mx:AdvancedDataGridColumn headerText="1" dataField="audibility1"  width="50" />
+									<mx:AdvancedDataGridColumn headerText="2" dataField="audibility2" width="50" />
+									<mx:AdvancedDataGridColumn headerText="3" dataField="audibility3" width="50" />
+									<mx:AdvancedDataGridColumn headerText="4" dataField="audibility4" width="50" />
+									<mx:AdvancedDataGridColumn headerText="5" dataField="audibility5" width="50" />
+								</mx:AdvancedDataGridColumnGroup>
+								
+							</mx:AdvancedDataGridColumnGroup>
+						</mx:groupedColumns>
+					</mx:AdvancedDataGrid>
+					<s:Label text="" color="0x000000" id="clew_label_station" y="{60}" width="100%" textAlign="center"  visible="false" includeInLayout="false" />
+				</mx:Canvas>
+			</s:VGroup>
+		</s:VGroup>
+	</s:VGroup>
+	<ykz:AudiblePic width="100%" height="100%" id="lanPic" visible="false" includeInLayout="false"/>
+</system:BasePage>

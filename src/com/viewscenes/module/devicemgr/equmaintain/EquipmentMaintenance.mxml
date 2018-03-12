@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 xmlns:system="com.morcha4.frame.system.*"
+				 width="100%" height="100%"
+				 creationComplete="init()"
+				 xmlns:flipBar="com.viewscenes.utils.flipBar.*" 
+				 xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+				 xmlns:comp="com.viewscenes.global.comp.*" 
+				 xmlns:equmaintain="com.viewscenes.module.devicemgr.equmaintain.*" xmlns:checkbox="com.viewscenes.global.comp.checkbox.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCException;
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.util.RendererUtil;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+			
+			import mx.collections.ArrayCollection;
+			import mx.managers.PopUpManager;
+			//遥控站
+			[Bindable]
+			private var stationArr:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			private var dataArray:ArrayCollection = new ArrayCollection();
+			
+			public var selectedCounts:int =0;
+			protected function init():void
+			{
+				// TODO Auto-generated method stub
+				
+				getYkz();
+			}
+			private function onclose():void{
+				this.visible=false;
+				this.includeInLayout=false;
+				
+			}
+			protected function refreshList(event:Event):void
+			{
+				
+				query();
+				
+			}
+			private function query():void{
+				var obj:Object = new Object;
+				var starttime:String=this.oStartValidDate.text;
+				var endtime:String=this.oEndValidDate.text;
+				
+				if(starttime>endtime)
+				{
+					MM.show("开始时间不能大于结束时间，请重新输入！");
+					var date:Date=new Date();
+					var date1:Date=new Date();
+					date.setHours(00,00,00);
+					oStartValidDate.setDate(date);
+					oEndValidDate.setDate(date1);
+					return;
+				}
+				obj.head_name =this.station.getText("label");
+				obj.starttime =starttime;
+				obj.enddate =endtime;
+				pagebar.m_sendCmd(new RORequestParam("com.viewscenes.web.devicemgr.equmaintain.EquipmentMaintenance","doReport",obj,ProcessIndex,onfault));
+				
+				
+			}
+			private function ProcessIndex(list:ArrayCollection):void{ 
+				
+				con_clewlabel(clew_label,false);
+				this.dataArray=list;
+				
+				dataArray.refresh();
+				if(dataArray.length==0){
+					
+					con_clewlabel(clew_label,true,"无查询数据！");
+				}
+				
+			}
+			public function con_clewlabel(_component:Label,_visible:Boolean,_label:String="")
+			{
+				_component.visible=_visible;
+				_component.includeInLayout=_visible;
+				_component.text=_label;
+			}
+			
+			private function onfault(e:RPCException):void
+			{
+				
+				MM.show(e.message);
+			}
+			private function add():void{
+				var pop:AddEquMaintenance = AddEquMaintenance(PopUpManager.createPopUp(this,AddEquMaintenance,true));
+				
+				
+				PopUpManager.centerPopUp(pop);
+				pop.addEventListener("Equ_main_refresh",refreshList);
+			}
+			public var delIDs:String="";
+			private function del():void{
+				
+				for(var i:int=0;i<dataArray.length;i++){
+					var obj:Object = new Object();
+					obj = dataArray.getItemAt(i) as Object;
+					if(obj.isSelected=="true"){
+						delIDs+=obj.data_id+",";
+					}
+				}
+				if(delIDs!=""){
+					
+					MM.show("您确定要删除吗?","删除站点运行信息","",confirmDel,true,cancelHandler,null);
+				}else{
+					DataManager.showErrorMessage("请选择要删除的站点运行信息!");
+					return;
+				}
+			}
+			/**
+			 * 取消回调方法
+			 * */
+			private function cancelHandler():void{
+				delIDs="";
+			}
+			private function confirmDel():void{
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.devicemgr.equmaintain.EquipmentMaintenance","del",delIDs.substr(0,delIDs.length-1),delRunplanBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function delRunplanBack(res:String):void{
+				delIDs="";
+				MM.show(res);
+				query();
+			}
+			/**
+			 * 
+			 * 站点
+			 * */
+			private function getYkz():void{
+				var arr:ArrayCollection=DataManager.getHeadendByState("all","all",true);
+				for(var i:int = 0;i<arr.length; i++){
+					var obj:Object = arr.getItemAt(i);
+					stationArr.addItem({label:obj.shortname,value:obj.code});
+				}
+			}
+			//选择点中后执行的方法
+			private function changeSelect(obj:Object):void{
+				if(obj.data.isSelected=="true"){
+					this.selectedCounts=selectedCounts+1;  
+				}else{
+					this.selectedCounts=selectedCounts-1; 
+				}
+			}
+			/**
+			 * 全选操作
+			 * */
+			private var selectState:String = "false";// 记录选中的状态
+			
+//			private function selectAll():void{
+//				if(btn1.label=="全选"){
+//					btn1.label="取消全选";
+//					selectState="true";
+//				}else{
+//					btn1.label="全选";
+//					selectState="false";
+//				}
+//				
+//				for(var i:int=0;i<dataArray.length;i++){
+//					var obj:Object = dataArray.getItemAt(i) as Object;
+//					obj.isSelected=selectState;
+//					
+//				}
+//				//dataArray.refresh();
+//			}
+			private function doExcel():void{
+				var url:String="com.viewscenes.web.devicemgr.equmaintain.EquipmentMaintenance";
+				var func:String="doExcel";
+				
+				var head:String = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r';
+				head += '<msg type="'+url+'" function="'+func+'">\r';
+				var xmlText:String = head;
+
+				xmlText += "<head_name>"+this.station.getText("label")+"</head_name>";
+				xmlText += "<starttime>"+oStartValidDate.text+"</starttime>";
+				xmlText += "<endtime>"+oEndValidDate.text+"</endtime>";
+				xmlText += "</msg>";
+				
+				flash.external.ExternalInterface.call("toExcel",xmlText);
+			}
+			
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%">
+		<s:HGroup width="100%"   verticalAlign="middle" paddingLeft="10">
+			<s:Label text="站点"/>
+			<checkbox:CheckDropList id="station" dataProvider="{stationArr}" filedLabel="label" />
+			<s:Label text="开始时间"/>
+			<timecomp:TimeNew  id="oStartValidDate" dateDisplay="date" />
+			<s:Spacer width="10"/>
+			<s:Label text="结束时间"/>
+			<timecomp:TimeNew  id="oEndValidDate" dateDisplay="date" />
+			<s:Spacer width="50"/>
+			
+			<s:Button buttonMode="true" id="queryBtn" label="查询"    click="query()" />	
+			<s:Button buttonMode="true" id="addBtn" label="新增"   click="add()" />
+			<!--s:Button buttonMode="true" label="全选" id="btn1" click="selectAll()"/-->
+			<s:Button buttonMode="true" id="delBtn" label="删除"   click="del()" />
+			<s:Button buttonMode="true" id="excelBtn" label="导出"   click="doExcel()" />
+		</s:HGroup>
+		<s:Group width="100%" height="100%" top="12" bottom="60" >
+			<s:Group width="100%" height="100%" >
+		
+			<s:DataGrid width="100%" height="100%" id="result" textAlign="center" showDataTips="true" dataProvider="{dataArray}">
+				<s:columns>
+					<s:ArrayCollection>
+						<s:GridColumn headerText="选择" width="60" editable="false" itemRenderer="{RendererUtil.getCheckBoxRenderer(changeSelect)}"  />
+						
+						<s:GridColumn headerText="站点名称" dataField="head_name" />
+						<s:GridColumn headerText="站点代号" dataField="head_code"  />
+						<s:GridColumn headerText="故障开始时间" dataField="starttime"/>
+						<s:GridColumn headerText="故障结束时间" dataField="endtime"/>
+						<s:GridColumn headerText="累计时间（天）" dataField="count" />
+						<s:GridColumn headerText="故障类型"  dataField="type" />
+						<s:GridColumn headerText="故障设备"  dataField="equ" />
+						<s:GridColumn headerText="故障情况"  dataField="type_name"/>
+						<s:GridColumn headerText="处理情况"  dataField="handle"/>
+						<s:GridColumn headerText="建议"  dataField="advice"/>
+						<s:GridColumn headerText="备注"  dataField="remark"/>
+					</s:ArrayCollection>
+				</s:columns>
+			</s:DataGrid>
+		</s:Group>
+		<s:Label text="正在查询，请稍候..." color="0x000000" id="clew_label" y="50" width="100%" textAlign="center"  visible="false" includeInLayout="false" />				
+</s:Group>
+		<!--分页组件所在地-->
+		<flipBar:PageBar  id="pagebar"  rowConutOfPage="30" totalPageQuery="10" height="20"/>
+	</s:VGroup>
+</system:BasePage>

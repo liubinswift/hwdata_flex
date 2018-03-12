@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 xmlns:system="com.morcha4.frame.system.*"
+				 width="100%" height="100%" xmlns:global="com.viewscenes.global.*" 
+				 xmlns:timecomp="com.viewscenes.utils.timecomp.*" 
+				 xmlns:flipBar="com.viewscenes.utils.flipBar.*" 
+				 xmlns:iframe="com.morcha4.ui.iframe.*"
+				 creationComplete="initApp();" xmlns:checkbox="com.viewscenes.global.comp.checkbox.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCException;
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.editor.ComboBoxEditor;
+			import com.morcha4.editor.EditorManager;
+			import com.morcha4.editor.TextEditor;
+			import com.morcha4.util.RendererUtil;
+			import com.viewscenes.beans.RadioMarkZstViewBean;
+			import com.viewscenes.beans.RadioStreamResultBean;
+			import com.viewscenes.beans.StreamHistoryQueryResult;
+			import com.viewscenes.beans.pub.ResHeadendBean;
+			import com.viewscenes.beans.report.OriginalEffectBean;
+			import com.viewscenes.beans.runplan.RunplanBean;
+			import com.viewscenes.beans.task.Task;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.utils.StringTool;
+			import com.viewscenes.utils.timecomp.DateUtil;
+			
+			import flash.utils.setTimeout;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.core.UIComponent;
+			import mx.events.CloseEvent;
+			import mx.utils.ArrayUtil;
+			import mx.utils.ObjectUtil;
+			
+			import spark.events.GridItemEditorEvent;
+			import spark.events.IndexChangeEvent;
+			
+			/**
+			 * 效果原始记录
+			 */
+			[Bindable]
+			private var originalEffectArray:ArrayCollection = new ArrayCollection();
+			
+			//收测方式
+			[Bindable]
+			private var recTypes:ArrayCollection = new ArrayCollection([{label:"遥控站收测",data:"1"},{label:"采集点收测",data:"2"}
+				,{label:"互换资料",data:"3"},{label:"反馈收测",data:"4"},{label:"实地收测",data:"5"}]);
+			//节目类型
+			[Bindable]
+			private var programTypes:ArrayCollection = new ArrayCollection([{label:"国际台节目",data:"1"},{label:"海外落地节目",data:"2"}]);
+			
+			[Bindable]
+			private var ykzArr:ArrayCollection = new ArrayCollection();
+			
+			private function initApp():void{
+				//				Alert.show(DateUtil.date2str(new Date,'date').substr(0,8)+'01');
+				getHeadend("102");
+			}
+			
+			private function getHeadend(headend_type_id:String):void{
+				ykzArr = new ArrayCollection();
+				var ykzArrTemp:ArrayCollection = DataManager.getHeadendByState("all",headend_type_id,true);
+				for(var i=0;i<ykzArrTemp.length;i++){
+					var obj:Object = new Object();
+					obj.label = ykzArrTemp.getItemAt(i).shortname;
+					obj.value = ykzArrTemp.getItemAt(i).code;
+					ykzArr.addItem(obj);
+				}
+			}
+			
+			/**
+			 * 效果原始记录查询
+			 */ 
+			private function originalQuery():void
+			{
+				//校验时间
+				var result:Number = DateUtil.compareDateStr(startDatetime.text,endDatetime.text);
+				if (result != -1){
+					DataManager.showErrorMessage("开始时间不能大于或等于结束时间");
+					return ;
+				}
+				originalEffectArray = new ArrayCollection();
+				showTips(true);
+				var obj:Object = new Object;
+				var bean:OriginalEffectBean = new OriginalEffectBean();
+				obj.beginTime = startDatetime.text;
+				obj.endTime = endDatetime.text;
+				bean.type =  programType.selectedItem.data;
+				obj.bean = bean;
+				obj.queryType = recType.selectedItem.data;
+				obj.headcodes = headend.getText("value");
+				pagebar.m_sendCmd(new RORequestParam("com.viewscenes.web.dataquery.originalEffect.OriginalEffectQuery","queryOriginalEffect",obj,originalQueryBack,DataManager.showErrorMessageBack));
+			}
+			
+			
+			private function originalQueryBack(arr:ArrayCollection):void{
+				if(arr.length==0){
+					clew_label.visible = true;
+					clew_label.includeInLayout = true;
+					clew_label.text = "无查询结果...";
+				} else{
+					clew_label.visible = false
+					clew_label.includeInLayout = false;
+					clew_label.text = "";
+				}
+				originalEffectArray = arr;
+				//				if(recType.selectedItem.data == "1"){
+				//					receive_station_caijiF.visible = false;
+				//					receive_station_yaokongF.visible = true;
+				//				} else if(recType.selectedItem.data == "2"){
+				//					receive_station_yaokongF.visible = false;
+				//					receive_station_caijiF.visible = true;
+				//				}
+			}
+			
+			
+			
+			/**
+			 * 查询时提示信息
+			 */ 
+			private function showTips(b:Boolean):void{
+				clew_label.y = result.columnHeaderGroup.height+10;
+				if (b == true){
+					clew_label.visible = true;
+					clew_label.includeInLayout = true;
+					clew_label.text = "正在查询,请稍候...";
+				}else{
+					clew_label.visible = false
+					clew_label.includeInLayout = false;
+					clew_label.text = "";
+				}
+			}
+			
+			/**
+			 * 导出excel
+			 */
+			protected function exportExcel():void
+			{
+				//校验时间
+				var result:Number = DateUtil.compareDateStr(startDatetime.text,endDatetime.text);
+				if (result != -1){
+					DataManager.showErrorMessage("开始时间不能大于或等于结束时间");
+					return ;
+				}
+				
+				var url:String="com.viewscenes.web.dataquery.originalEffect.OriginalEffectQuery";
+				var func:String="doExcel";
+				
+				var head:String = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r';
+				head += '<msg type="'+url+'" function="'+func+'">\r';
+				var xmlText:String = head;
+				
+				xmlText += "<beginTime>"+startDatetime.text+"</beginTime>";
+				xmlText += "<endTime>"+endDatetime.text+"</endTime>";
+				xmlText += "<queryType>"+recType.selectedItem.data+"</queryType>";
+				xmlText += "<programType>"+programType.selectedItem.data+"</programType>";
+				xmlText += "<headcodes>"+headend.getText("value")+"</headcodes>";
+				xmlText += "</msg>";
+				
+				flash.external.ExternalInterface.call("toExcel",xmlText);
+			}
+			
+			protected function recType_changeHandler(event:IndexChangeEvent):void
+			{
+				headend.visible = headend.includeInLayout = headendLabel.visible = headendLabel.includeInLayout = true;
+				if(recType.selectedItem.data == "1"){//遥控站
+					getHeadend("102");
+				} else if(recType.selectedItem.data == "2"){//采集点
+					getHeadend("101");
+				} else{
+					headend.visible = headend.includeInLayout = headendLabel.visible = headendLabel.includeInLayout = false;
+				}
+			}
+			private function reLevel(item:Object,gc:GridColumn):String{
+				if(item.level=="-1"){
+					return "1";
+				}
+				return item.level;
+			}
+			
+			private  function programType_changeHandler(event:IndexChangeEvent):void
+			{
+				// TODO Auto-generated method stub
+				originalEffectArray.removeAll();
+			}
+			
+		    private function reSet(){
+				headend.setText("","value");
+				recType.selectedIndex=0;
+				programType.selectedIndex=0;
+			}
+			
+		]]>	
+	</fx:Script>
+	<s:VGroup width="100%" height="100%">
+		<s:VGroup horizontalAlign="left" verticalAlign="middle" width="100%" height="100%" paddingLeft="5">
+			
+			<s:HGroup height="30" width="100%" verticalAlign="middle">
+				<s:Label text="收测方式："/>
+				<s:DropDownList id="recType" dataProvider="{recTypes}" selectedIndex="0" width="100" change="recType_changeHandler(event)"/>
+				<s:Spacer width="4"/>
+				<s:Label text="站点" id="headendLabel"/>
+				<checkbox:CheckDropList id="headend" dataProvider="{ykzArr}"/>
+				<s:Spacer width="4"/>
+				<s:Label text="节目类型："/>
+				<s:DropDownList id="programType" dataProvider="{programTypes}" selectedIndex="0" width="100" change="programType_changeHandler(event)"/>
+				<s:Spacer width="4"/>
+				<!--s:Label text="站点代码："/>
+				<global:HeadendList id="headend"  headDataAll="true"/-->
+				<s:Spacer width="4"/>
+				
+			</s:HGroup>
+			<s:HGroup height="30" width="100%" verticalAlign="middle">
+				<s:Label text="起始时间：" id="begintimelabel"/>
+				<timecomp:TimeNew id="startDatetime" starttime="00:00:00" text="{DateUtil.date2str(new Date,'date').substr(0,8)+'01'}"/>
+				<timecomp:TimeNew id="day" dateDisplay="date" visible="false" includeInLayout="false"/>
+				<!--s:Spacer width="4" id="space1"/-->	
+				<s:Label text="结束时间：" id="endtimelabel"/>
+				<timecomp:TimeNew id="endDatetime" />
+				<s:Spacer width="4"/>	
+				<s:Button buttonMode="true" label="查询" click="originalQuery()" />
+				<s:Button buttonMode="true" label="重置" click="reSet()" />
+				<s:Button buttonMode="true" label="导出" click="exportExcel()" />
+			</s:HGroup>
+			<s:VGroup width="100%" height="100%">
+				<s:Group width="100%" height="100%">
+					<s:DataGrid width="100%" height="100%" id="result" dataProvider="{originalEffectArray}" textAlign="center" showDataTips="true">
+						<s:columns>
+							<s:ArrayCollection>
+								<s:GridColumn headerText="语言" dataField="language_name"  width="60"/>
+								<s:GridColumn headerText="频率" dataField="freq" width="60" />
+								<s:GridColumn headerText="播音时间" dataField="play_time"/>
+								
+								<s:GridColumn headerText="发射台" dataField="transmit_name" id="tranStationF" visible="{programType.selectedItem.data=='1'?true:false}"/>
+								<s:GridColumn headerText="发射方向"  dataField="transmit_direction" id="tranDirectionF" visible="{programType.selectedItem.data=='1'?true:false}"/>
+								<s:GridColumn headerText="发射功率"  dataField="transmit_power" visible="{programType.selectedItem.data=='1'?true:false}"/>
+								<s:GridColumn headerText="服务区"  dataField="service_area"/>
+								<s:GridColumn headerText="CIRAF区"  dataField="ciraf" id="cirafAreaF"/>
+								
+								<s:GridColumn headerText="发射国家"  dataField="transmit_country" id="tranCountryF" visible="{programType.selectedItem.data=='2'?true:false}"/>
+								<s:GridColumn headerText="发射城市"  dataField="transmit_city" id="tranCityF" visible="{programType.selectedItem.data=='2'?true:false}"/>
+								<s:GridColumn headerText="转播机构"  dataField="redisseminators" id="broadcastOrgF" visible="{programType.selectedItem.data=='2'?true:false}"/>
+								
+								<s:GridColumn headerText="收测日期"  dataField="receive_date"/>
+								<s:GridColumn headerText="收测时间"  dataField="receive_time"/>
+								<s:GridColumn headerText="遥控站"  dataField="receive_station_yaokong"  id="receive_station_yaokongF" visible="{recType.selectedItem.data == '1'?true:false}"/>
+								<s:GridColumn headerText="采集点"  dataField="receive_station_caiji"  id="receive_station_caijiF"  visible="{recType.selectedItem.data == '2'?true:false}"/>
+								<s:GridColumn headerText="S"  dataField="fens"/>
+								<s:GridColumn headerText="I"  dataField="feni"/>
+								<s:GridColumn headerText="O"  dataField="feno"/>
+								<s:GridColumn headerText="电平"  labelFunction="reLevel" />
+								<s:GridColumn headerText="备注"  dataField="bak"/>
+							</s:ArrayCollection>
+						</s:columns>
+					</s:DataGrid>
+					<s:Label text="正在查询，请稍候..." color="0x000000" id="clew_label" y="{result.columnHeaderGroup.height+20}" width="100%" textAlign="center"  visible="false" includeInLayout="false" />				
+				</s:Group>
+				<!--分页组件所在地-->
+				<flipBar:PageBar  id="pagebar" rowConutOfPage="30" totalPageQuery="10" height="20"/>
+			</s:VGroup>
+		</s:VGroup>
+	</s:VGroup>
+	
+	<iframe:HTML  id="downloadHtml" source="com/viewscenes/utils/download/download.html"  visible="false" width="0" height="0"/>
+</system:BasePage>

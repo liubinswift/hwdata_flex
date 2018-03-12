@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 xmlns:system="com.morcha4.frame.system.*" 
+				 xmlns:report="com.viewscenes.global.comp.*" 
+				 width="100%" height="100%" 
+				  creationComplete="init()"
+				 xmlns:flipBar="com.viewscenes.utils.flipBar.*" 
+				 xmlns:timecomp="com.viewscenes.utils.timecomp.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.viewscenes.global.comp.MM;
+			
+			import mx.events.FlexEvent;
+
+			
+			[Bindable]
+			private var dataArray:ArrayCollection = new ArrayCollection();
+		
+
+	
+			 function callBackDetailMethod(obj:Object):void{
+ 
+				 if(obj == null){
+					 obj = new Object();
+					 obj.resultList = new ArrayCollection();
+					 obj.resultTotal = 0;
+				 }
+				 pagebar.m_queryProcess(obj,showBackDetailMethod);
+				
+			 }
+			function showBackDetailMethod(obj:ArrayCollection):void{
+			
+				con_clewlabel(clew_label,false);
+				dataArray.removeAll();
+//				MM.show(obj.length+"");
+				dataArray=obj;	
+				if(obj.length==0){
+					
+					con_clewlabel(clew_label,true,"无查询数据！");
+				}
+				
+			}
+			/**
+			 * 控制datagrid的提示框是否显示，以及显示内容
+			 * **/
+			public function con_clewlabel(_component:Label,_visible:Boolean,_label:String="")
+			{
+				_component.visible=_visible;
+				_component.includeInLayout=_visible;
+				_component.text=_label;
+			}
+	
+			
+			protected function init():void
+			{
+				// TODO Auto-generated method stub
+				this.report.callBackDetailMethod=callBackDetailMethod;//报表详细显示方法
+                this.report.callBackExportMethod=callBackExportMethod;//报表导出方法
+				this.report.reportType="1001";//报表类型.
+				
+			}
+			function callBackExportMethod():void{
+				
+				
+				var url:String="com.viewscenes.web.statistics.AlarmDataStatistics";
+				var func:String="doExcel";
+				
+				var head:String = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r';
+				head += '<msg type="'+url+'" function="'+func+'">\r';
+				var xmlText:String = head;
+				
+				if(this.report.reportBean==null){
+					MM.show("请查询报表后再导出！");
+					return;
+				}
+				xmlText += "<reportId>"+this.report.reportBean.report_id+"</reportId>";
+				xmlText += "<starttime>"+this.report.reportBean.start_datetime+"</starttime>";
+				xmlText += "<endtime>"+this.report.reportBean.end_datetime+"</endtime>";
+				xmlText += "</msg>";
+				
+				flash.external.ExternalInterface.call("toExcel",xmlText);	
+			}
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%">
+		<report:ReportIndexList id="report" height="90"/>
+	<s:VGroup width="100%" height="100%">
+		<s:HGroup width="100%" height="100%">
+			<s:DataGrid width="100%" height="100%" id="result" textAlign="center"  showDataTips="true" dataProvider="{dataArray}" >
+				<s:columns>
+					<s:ArrayCollection>
+						<s:GridColumn headerText="异态日期" dataField="abnormal_date"  />
+						<s:GridColumn headerText="发射台" dataField="station_name" />
+						<s:GridColumn headerText="机号" dataField="tran_no"/>
+						
+						<s:GridColumn headerText="频率（kHz）" dataField="frequency" />
+						<s:GridColumn headerText="功率(KW)"  dataField="power" />
+						<s:GridColumn headerText="语言"  dataField="language"/>
+						<s:GridColumn headerText="播音时间"  dataField="play_time"/>
+						<s:GridColumn headerText="异态发生时间"  dataField="abnormal_time" />
+						<s:GridColumn headerText="异态时间(分)"  dataField="count_minues" />
+						<s:GridColumn headerText="收测遥控站"  dataField="remote_station" />
+						<s:GridColumn headerText="异态现象"  dataField="abnormal_type" />
+						<!--s:GridColumn headerText="收测方式"  dataField="get_type"/-->
+						<s:GridColumn headerText="备注"  dataField="remark" maxWidth="120"/>
+						</s:ArrayCollection>
+				</s:columns>
+			</s:DataGrid>
+	</s:HGroup>
+		<s:Label text="正在查询，请稍候..." color="0x000000" id="clew_label" y="{result.columnHeaderGroup.height+10}" width="100%" textAlign="center"  visible="false" includeInLayout="false" />				
+		
+		<!--分页组件所在地-->
+		<flipBar:PageBar  id="pagebar" rowConutOfPage="30" totalPageQuery="10" height="20"/>
+	</s:VGroup>
+	</s:VGroup>
+</system:BasePage>

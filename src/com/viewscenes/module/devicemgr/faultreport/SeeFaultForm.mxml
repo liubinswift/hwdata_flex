@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" close="close(event);"
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%"
+			   creationComplete="init();" 
+			   xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+			   xmlns:ip="com.viewscenes.utils.tools.*"
+			   xmlns:checkbox="com.viewscenes.global.comp.checkbox.*"
+			   xmlns:advancedComboBox="com.morcha4.ui.advancedComboBox.*"
+			   mouseDown="startDrag()"
+			   title="查看故障信息"
+			   mouseUp="stopDrag();">
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.managers.PopUpManager;
+			[Bindable]
+			private  var faultObj:Object={
+				"alarm_id":"",
+				"head_id":"",
+				"equ_code":"",
+				"origin_alarmid":"",
+				"alarm_datetime":"",
+				"resume_datetime":"",
+				"is_resume":"",
+				"type":"",
+				"reasom":"",
+				"description":"",
+				"outputlinelevel":"",
+				"inputlinelevel":"",
+				"linefrequency":"",
+				"batterylevel":"",
+				"upsstatus":"",
+				"report_type":"",
+				"is_handle":"",
+				"handle_datetime":"",
+				"operator":"",
+				"remark":"",
+				"head_code":"",
+				"shortname":"",
+				"is_online":"",
+				"ip":"",
+				"is_delete":""
+			};
+			[Bindable]
+			private var tempq:ArrayCollection = new ArrayCollection([{label:"供电异常报警",mode:"1"},{label:"接收机异常报警",mode:"2"},{label:"调制度卡报警",mode:"3"},{label:"调幅度卡报警",mode:"4"},{label:"语音压缩卡报警",mode:"5"},{label:"频偏卡报警",mode:"6"},{label:"电池电压低系统关机",mode:"7"},{label:"电视接收机异常",mode:"11"},{label:"视频压缩卡异常",mode:"12"}]);
+			//初始化方法
+			private function init():void{
+				getIndex();
+			}
+			private function getIndex():void{
+				for(var i:int=0;i<tempq.length;i++){
+					if(faultObj.type==tempq[i].mode){
+						type.text=tempq[i].label;
+					}
+				}
+				if(faultObj.is_handle=="1"){
+					ishandle.text="已处理";
+				}else{
+					ishandle.text="未处理";
+				}
+				if(faultObj.is_resume=="1"){
+					is_resume.text="已解除";
+				}else{
+					is_resume.text="未解除";
+				}
+				if(faultObj.report_type=="0"){
+					report_type.text="手动回收";
+				}
+				if(faultObj.report_type=="1"){
+					report_type.text="主动上报";
+				}
+				if(faultObj.report_type=="2"){
+					report_type.text="手动添加";
+				}
+			}
+			public function setFault(obj:Object):void{
+				faultObj=obj;
+			}
+			private function close(event:Event):void{
+				PopUpManager.removePopUp(this);
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<s:VGroup width="100%" height="100%" >
+		<s:HGroup verticalAlign="middle">		
+			<s:Form>
+				<s:FormItem height="20" label="报警站点">
+					<s:TextInput editable="false" text="{faultObj.shortname}"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="站点代码">
+					<s:TextInput editable="false" text="{faultObj.head_code}"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="报警时间">
+					<s:TextInput editable="false" text="{faultObj.alarm_datetime}"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="报警类型">
+					<s:TextInput id="type"  editable="false"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="报警原因">
+					<s:TextInput  text="{faultObj.reason}" editable="false"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="接收机编号">
+					<s:TextInput  editable="false" text="{faultObj.equ_code}"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="输出电压">
+					<s:TextInput editable="false" text="{faultObj.outputlinelevel}"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="输入电压">
+					<s:TextInput editable="false" text="{faultObj.inputlinelevel}" />
+				</s:FormItem>
+				<s:FormItem height="20" label="外电频率">
+					<s:TextInput editable="false" text="{faultObj.linefrequency}"/>
+				</s:FormItem>
+			</s:Form>
+			<s:Form >
+				<s:FormItem height="20" label="UPS电池电压">
+					<s:TextInput editable="false" text="{faultObj.batterylevel}"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="UPS状态">
+					<s:TextInput editable="false" text="{faultObj.upsstatus}"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="上报类型">
+					<s:TextInput id ="report_type" editable="false" />
+				</s:FormItem>
+				<s:FormItem height="20" label="是否处理">
+					<s:TextInput id="ishandle"  editable="false"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="处理人">
+					<s:TextInput  text="{faultObj.operator}" editable="false"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="处理日期">
+					<s:TextInput text="{faultObj.handle_datetime}" editable="false"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="处理意见">
+					<s:TextInput  text="{faultObj.remark}" editable="false"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="故障是否解除">
+					<s:TextInput id="is_resume"  editable="false"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="解除故障时间">
+					<s:TextInput text="{faultObj.resume_datetime}" editable="false"/>
+				</s:FormItem>
+			</s:Form>
+		</s:HGroup>
+		<s:HGroup width="100%" height="35" verticalAlign="middle" horizontalAlign="center">
+			<s:Button buttonMode="true" label="关闭" click="close(null)"/>
+		</s:HGroup>
+	</s:VGroup>	
+</s:TitleWindow>

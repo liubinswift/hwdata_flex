@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx"
+				 xmlns:system="com.morcha4.frame.system.*"
+				 xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+				 xmlns:flipBar="com.viewscenes.utils.flipBar.*"
+				 xmlns:tools="com.viewscenes.utils.tools.*"
+				 xmlns:checkbox="com.viewscenes.global.comp.checkbox.*"
+				 width="100%" height="100%" creationComplete="init()">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCException;
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.viewscenes.beans.runplan.GJTLDRunplanBean;
+			import com.viewscenes.global.DataManager;
+			import mx.controls.Alert;
+			[Bindable]
+			private var runplanArr:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			private var headArr:ArrayCollection = new ArrayCollection();
+			private function init():void{
+				queryHeadend();
+			}
+			/**
+			 * 查询站点信息
+			 * */
+			private function queryHeadend():void{
+				var obj:Object = new Object();
+				obj.type_id="all";
+				obj.state="all";
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.runplanManager.gjtRunplan.GJTRunplan","getHeadendList",obj,getHeadendListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getHeadendListBack(arr:ArrayCollection):void{
+				headArr=arr;
+				site.setText("","value");
+			}
+			private function query():void{
+				runplanArr.removeAll();
+				clew_label.text="正在查询，请稍候...";
+				clew_label.visible=true;
+				clew_label.includeInLayout=true;
+				var bean:GJTLDRunplanBean = new GJTLDRunplanBean();
+				bean.mon_area =site.getText("value");
+				bean.remark="xg";
+				bean.summer=seasonType.selectedItem.label;
+				var request:RORequestParam =new RORequestParam("com.viewscenes.web.runplanManager.splitRunplan.SplitRunplan","querySplitHWRunplan",bean,queryRunplanBack,DataManager.showErrorMessageBack);
+				pagebar.m_sendCmd(request);
+			}
+			
+			private function queryRunplanBack(arr:ArrayCollection):void{
+				if(arr.length>0){
+					clew_label.visible=false;
+					clew_label.includeInLayout=false;
+					runplanArr=arr;
+				}else{
+					clew_label.text="没有查询数据!";
+				}
+				
+			}
+			
+			/**
+			 * 运行图拆分
+			 * */
+			private function splitRunplan():void{
+				runplanArr.removeAll();
+				clew_label.visible=true;
+				clew_label.includeInLayout=true;
+				var ldbean:GJTLDRunplanBean = new GJTLDRunplanBean();
+				ldbean.type_id="101";
+				ldbean.mon_area =site.getText("value");
+				ldbean.summer = seasonType.selectedItem.label;
+				ldbean.input_person = DataManager.user.userName;
+				var request:RORequestParam =new RORequestParam("com.viewscenes.web.runplanManager.splitRunplan.SplitRunplan","ykzSplitHWRunplan",ldbean,splitRunplanBack,DataManager.showErrorMessageBack);
+				pagebar.m_sendCmd(request);
+			}
+			
+			private function splitRunplanBack(arr:ArrayCollection):void{
+				if(arr.length>0){
+					query();
+				}else{
+					clew_label.text="没有需要拆分的运行图数据!";
+				}
+				
+			}
+			/**
+			 * 导出拆分好的遥控站运行图数据
+			 * */
+			private function doExcel():void{
+				var url:String="com.viewscenes.web.runplanManager.splitRunplan.SplitRunplan";
+				var func:String="doHWExcel";
+				
+				var head:String = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r';
+				head += '<msg type="'+url+'" function="'+func+'">\r';
+				var xmlText:String = head;
+				xmlText += "<runplan_type>2</runplan_type>";
+				xmlText+="<typeID>101</typeID>";
+				xmlText+="<codes>"+site.getText("value")+"</codes>"	;
+				if(seasonType.selectedItem==null){
+					xmlText+="<season></season>";
+				}else{
+					xmlText+="<season>"+seasonType.selectedItem.label+"</season>";
+				}
+				
+				xmlText += "</msg>";
+				flash.external.ExternalInterface.call("toExcel",xmlText);
+			}
+			
+			protected function state_changeHandler(str:String):void
+			{
+				if(state.selectedItem != null){
+					var obj:Object = new Object();
+					obj.type_id="all";
+					obj.state=str;
+					RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.runplanManager.gjtRunplan.GJTRunplan","getHeadendList",obj,getHeadendListBack,DataManager.showErrorMessageBack));
+				}
+			}
+			
+			
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%" horizontalAlign="center" verticalAlign="middle">
+		<mx:HBox width="100%" height="25" verticalAlign="middle" horizontalAlign="center">
+			<s:Label text="大洲"/>
+			<s:DropDownList id="state" dataProvider="{DataManager.satateBeanArrAll}" change="state_changeHandler(this.state.selectedItem.state)"  labelField="state_name"/>
+			<s:Label text="收测站点"/>
+			<checkbox:CheckDropList id="site" width="200" dataProvider="{headArr}" filedLabel="label" />
+			<s:Label text="季节类型"/>
+			<s:DropDownList id="seasonType" selectedIndex="0" dataProvider="{new ArrayCollection([{label:'',value:''},{label:'夏季',value:'夏季'},{label:'冬季',value:'冬季'}])}"/>
+			<s:Button buttonMode="true" label="查询" click="query()"/>
+			<s:Button buttonMode="true" label="运行图拆分" click="splitRunplan()"/>
+			<s:Button buttonMode="true" label="导出Excel" click="doExcel()"/>
+		</mx:HBox>
+		<mx:Canvas  width="100%" height="100%">
+			<s:DataGrid width="100%" height="100%" showDataTips="true"  id="grid" textAlign="center" dataProvider="{runplanArr}">
+				<s:columns>
+					<s:ArrayCollection>
+						<s:GridColumn dataField="launch_country" id="lc" visible="false" headerText="发射国家" />
+						<s:GridColumn dataField="sentcity"  headerText="发射城市" />
+						<s:GridColumn dataField="redisseminators" id="rst" headerText="转播机构" />
+						<s:GridColumn dataField="freq" width="60"  headerText="频率" />
+						<s:GridColumn dataField="direction" width="60"  headerText="方 向" />
+						<s:GridColumn dataField="language"  headerText="语言"/>
+						<s:GridColumn dataField="service_area"  headerText="服务区"/>
+						<s:GridColumn dataField="start_time"  headerText="开始时间" />
+						<s:GridColumn dataField="end_time"  headerText="结束时间" />
+						<s:GridColumn dataField="rest_datetime"  headerText="播音日期" />
+						<s:GridColumn dataField="valid_start_time"  headerText="启用期" width="100" />
+						<s:GridColumn dataField="valid_end_time"  headerText="停用期" width="100" />
+						<!--s:GridColumn dataField="summer"  headerText="夏令时" width="100" /-->
+						<s:GridColumn dataField="summer_starttime"  headerText="夏令时启用日期" width="100" />
+						<s:GridColumn dataField="summer_endtime"  headerText="夏令时停用日期" width="100" />
+						<s:GridColumn dataField="xg_mon_area"  headerText="效果收测站点" width="50" />
+						<s:GridColumn dataField="remark" headerText="备注"/>
+					</s:ArrayCollection>
+				</s:columns>
+			</s:DataGrid>
+			<s:Label text="正在查询，请稍候..." id="clew_label" y="{grid.columnHeaderGroup.height+10}" color="0x000000" fontSize="15" width="100%" textAlign="center"  visible="false" includeInLayout="false" />
+		</mx:Canvas>	
+		<flipBar:PageBar width="100%" id="pagebar" rowConutOfPage="40" totalPageQuery="50" height="20"/>
+		
+	</s:VGroup>
+</system:BasePage>

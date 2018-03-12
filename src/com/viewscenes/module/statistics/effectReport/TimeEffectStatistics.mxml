@@ -1,0 +1,407 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" 
+		  xmlns:system="com.morcha4.frame.system.*"
+		  width="100%" height="100%" 
+		  xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+		  creationComplete="init();" xmlns:comp="com.viewscenes.global.comp.*" xmlns:global="com.viewscenes.global.*" xmlns:checkbox="com.viewscenes.global.comp.checkbox.*" xmlns:contaners="com.morcha4.ui.contaners.*" xmlns:flipBar="com.viewscenes.utils.flipBar.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+		<!-- 时段效果统计 -->
+	</fx:Declarations>
+	<system:layout>
+		<s:VerticalLayout/>
+	</system:layout>
+	<fx:Script>
+		<![CDATA[
+
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+
+			
+			import mx.collections.ArrayCollection;
+
+			import mx.core.UIComponent;
+			private var reportID:String = "";//报表id
+			
+			//遥控站
+			[Bindable]
+			private var ykzArr:ArrayCollection = new ArrayCollection();
+			
+			[Bindable] private var result1Arr:ArrayCollection = new ArrayCollection();
+			[Bindable] private var result2Arr:ArrayCollection = new ArrayCollection();
+			[Bindable] private var result3Arr:ArrayCollection = new ArrayCollection();
+			private const reportType:String = "1007";//报表类型 遥控站频段效果统计
+			
+			/**
+			 * 
+			 * 遥控站
+			 * */
+			private function getYkz():void{
+				var ykzArrTemp:ArrayCollection = DataManager.getHeadendByState("all","102",true);
+				for(var i=0;i<ykzArrTemp.length;i++){
+					var obj:Object = new Object();
+					obj.label = ykzArrTemp.getItemAt(i).shortname;
+					obj.value = ykzArrTemp.getItemAt(i).code;
+					obj.state = ykzArrTemp.getItemAt(i).state;
+					ykzArr.addItem(obj);
+				}
+			}
+			//			
+			private function init():void{
+				this.reportIndexList.callBackDetailMethod=callBackDetailMethod;//报表详细显示方法
+				this.reportIndexList.callBackExportMethod=callBackExportMethod;//报表导出方法
+				this.reportIndexList.callBackGetParamMethod=callBackGetParamMethod;//取得查询报表时需要的条件的方法
+				this.reportIndexList.reportType=reportType;//报表类型.
+				selectAll();
+				getYkz();
+				state_changeHandler();
+			}
+			
+			/**
+			 * 导出excel
+			 */
+			protected function callBackExportMethod():void
+			{
+				var url:String="com.viewscenes.web.statistics.effectReport.TimeEffectReportStatistics";
+				var func:String="doExcel";
+				
+				var head:String = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r';
+				head += '<msg type="'+url+'" function="'+func+'">\r';
+				var xmlText:String = head;
+				
+				if(this.reportIndexList.reportBean==null){
+					MM.show("请查询报表后再导出！");
+					return;
+				}
+				xmlText += "<reportId>"+this.reportIndexList.reportBean.report_id+"</reportId>";
+				xmlText += "<starttime>"+this.reportIndexList.starttime+"</starttime>";
+				xmlText += "<endtime>"+this.reportIndexList.endtime+"</endtime>";
+				xmlText += "</msg>";
+				
+				flash.external.ExternalInterface.call("toExcel",xmlText);
+			}
+			/**
+			 * 取得查询报表时需要的条件的方法
+			 */
+			private function callBackGetParamMethod():Object{
+				var obj:Object = new Object();
+				var subReportType = "";
+				var temp:String = "";
+				temp = this.conditon1.selected?"1,":"";//语言
+				subReportType += temp;
+				temp = this.conditon2.selected?"2,":"";//发射台
+				subReportType += temp;
+				temp = this.conditon3.selected?"3,":"";//频段
+				subReportType += temp;
+				
+				if(subReportType!=""){
+					subReportType = subReportType.substring(0,subReportType.length-1);
+				}
+				obj.subReportType = subReportType;
+				
+				obj.headcodes = ykz.getText("value");
+				if(obj.headcodes != ""){
+					obj.headcodes += ",";
+				}
+				return obj;
+			}
+			private var isSelectAll:Boolean = false;
+			/**
+			 * 全选统计内容
+			 */
+			private function selectAll():void{
+				isSelectAll = !isSelectAll;
+				conditon1.selected = isSelectAll;
+				conditon2.selected = isSelectAll;
+				conditon3.selected = isSelectAll;
+			}
+			
+			private function visableComp(comp:UIComponent,obj:Object=null):void{
+				if(obj==null){
+					comp.visible = !comp.visible;
+					comp.includeInLayout = comp.visible;
+				} else{
+					comp.visible = obj.visboo;
+					comp.includeInLayout = obj.visboo;
+				}
+			}
+			
+			
+			/**
+			 * 查询报表的详细数据
+			 **/
+			public function callBackDetailMethod(reportDesc:Object):void{
+				result1Arr.removeAll();
+				result2Arr.removeAll();
+				result3Arr.removeAll();
+				var rArr1:ArrayCollection = new ArrayCollection();
+				var rArr2:ArrayCollection = new ArrayCollection();
+				var rArr3:ArrayCollection = new ArrayCollection();
+				
+				var list:ArrayCollection = new ArrayCollection();
+				if(reportDesc != null){
+					list = reportDesc.resultList as ArrayCollection;
+				}
+				for(var i=0;i<list.length;i++){
+					var allArr:Array = (list.getItemAt(i).time_listens as String).split("_");
+					var obj:Object = new Object();
+					obj.receive_name = list.getItemAt(i).receive_name;
+					obj.h0 = allArr[0];
+					obj.h1 = allArr[1];
+					obj.h2 = allArr[2];
+					obj.h3 = allArr[3];
+					obj.h4 = allArr[4];
+					obj.h5 = allArr[5];
+					obj.h6 = allArr[6];
+					obj.h7 = allArr[7];
+					obj.h8 = allArr[8];
+					obj.h9 = allArr[9];
+					obj.h10 = allArr[10];
+					obj.h11 = allArr[11];
+					obj.h12 = allArr[12];
+					obj.h13 = allArr[13];
+					obj.h14 = allArr[14];
+					obj.h15 = allArr[15];
+					obj.h16 = allArr[16];
+					obj.h17 = allArr[17];
+					obj.h18 = allArr[18];
+					obj.h19 = allArr[19];
+					obj.h20 = allArr[20];
+					obj.h21 = allArr[21];
+					obj.h22 = allArr[22];
+					obj.h23 = allArr[23];
+					if(list.getItemAt(i).sub_report_type == "1"){//语言
+						obj.language_name = list.getItemAt(i).language_name;
+						rArr1.addItem(obj);
+					} else if(list.getItemAt(i).sub_report_type == "2"){//发射台
+						obj.transmit_station = list.getItemAt(i).transmit_station;
+						rArr2.addItem(obj);
+					} else if(list.getItemAt(i).sub_report_type == "3"){//频段
+						obj.freq_type = list.getItemAt(i).freq_type;
+						rArr3.addItem(obj);
+					}
+				}
+				
+				
+				var obj1:Object = new Object();
+				obj1.resultList = rArr1;
+				obj1.resultTotal = rArr1.length;
+				pagebar1.m_queryProcess(obj1,funcResult1);
+				
+				var obj2:Object = new Object();
+				obj2.resultList = rArr2;
+				obj2.resultTotal = rArr2.length;
+				pagebar2.m_queryProcess(obj2,funcResult2);
+				
+				var obj3:Object = new Object();
+				obj3.resultList = rArr3;
+				obj3.resultTotal = rArr3.length;
+				pagebar3.m_queryProcess(obj3,funcResult3);
+				
+				visableComp(result1,result1Arr.length==0?{visboo:false}:{visboo:true});
+				result1Button.selected = (result1Arr.length==0?false:true);
+				visableComp(result2,result2Arr.length==0?{visboo:false}:{visboo:true});
+				result2Button.selected = (result2Arr.length==0?false:true);
+				visableComp(result3,result3Arr.length==0?{visboo:false}:{visboo:true});
+				result3Button.selected = (result3Arr.length==0?false:true);
+			}
+			
+			private function funcResult1(arr:ArrayCollection):void{
+				result1Arr = arr;
+			}
+			private function funcResult2(arr:ArrayCollection):void{
+				result2Arr = arr;
+			}
+			private function funcResult3(arr:ArrayCollection):void{
+				result3Arr = arr;
+			}
+			
+			private function state_changeHandler():void
+			{
+				for(var i:int=0;i<ykzArr.length;i++){
+					ykzArr.getItemAt(i).selected=false;
+					ykz.myText.text="";
+					if("100" == state.selectedItem.state || ykzArr.getItemAt(i).state == state.selectedItem.state){
+						ykzArr.getItemAt(i).selected=true;
+					}
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	
+	<s:HGroup width="100%" verticalAlign="middle">
+		<s:Label text="大洲"/>
+		<s:DropDownList id="state" dataProvider="{DataManager.satateBeanArrAll}" change="state_changeHandler()" requireSelection="true" labelField="state_name"/>
+		<s:Label text="遥控站"/><!--s:ComboBox id="ykz" dataProvider="{ykzArr}" labelField="shortname" width="80"/-->
+		<checkbox:CheckDropList id="ykz" dataProvider="{ykzArr}"/>
+		<s:CheckBox label="全选" id="seleAll" click="selectAll();" selected="true"/>
+		<s:CheckBox label="各语言各时段效果对比表" id="conditon1"/>
+		<s:CheckBox label="各发射台各时段效果对比表" id="conditon2"/>
+		<s:CheckBox label="各频段各时段效果对比表" id="conditon3"/>
+	</s:HGroup>
+	<s:HGroup width="100%" verticalAlign="middle">
+		<comp:ReportIndexList id="reportIndexList" width="100%" height="120"/>
+		
+	</s:HGroup>
+	<s:Label text="正在查询，请稍候..." id="pagebarReportDetailTrip" width="100%" textAlign="center" visible="false" includeInLayout="false" />
+	
+	<s:VGroup width="100%"  gap="0">
+		<s:Group width="100%"
+				 click="visableComp(result1)">
+			
+			<s:ToggleButton styleName="title"  width="100%" id="result1Button"/>
+			<s:Label text="各语言各时段效果对比表"
+					 paddingTop="10"
+					 paddingLeft="30" 
+					 fontSize="14"
+					 />
+		</s:Group>
+		<s:VGroup width="100%" height="300" id="result1" visible="false" includeInLayout="false">
+			<mx:AdvancedDataGrid  width="100%" height="100%"   textAlign="center"  
+								   dataProvider="{result1Arr}" styleName="effect" sortExpertMode="true">
+				<mx:groupedColumns>
+					<mx:AdvancedDataGridColumnGroup headerText="各语言各时段效果对比表">
+						
+						<mx:AdvancedDataGridColumnGroup dataField="receive_name"  headerText="收测站点" />
+						<mx:AdvancedDataGridColumnGroup dataField="language_name"  headerText="语言" />
+						<mx:AdvancedDataGridColumnGroup headerText="00:00-01:00" dataField="h0" />
+						<mx:AdvancedDataGridColumnGroup headerText="01:00-02:00" dataField="h1"/>
+						<mx:AdvancedDataGridColumnGroup headerText="02:00-03:00" dataField="h2"/>
+						<mx:AdvancedDataGridColumnGroup headerText="03:00-04:00" dataField="h3"/>
+						<mx:AdvancedDataGridColumnGroup headerText="04:00-05:00" dataField="h4"/>
+						<mx:AdvancedDataGridColumnGroup headerText="05:00-06:00" dataField="h5"/>
+						<mx:AdvancedDataGridColumnGroup headerText="06:00-07:00" dataField="h6"/>
+						<mx:AdvancedDataGridColumnGroup headerText="07:00-08:00" dataField="h7"/>
+						<mx:AdvancedDataGridColumnGroup headerText="08:00-09:00" dataField="h8"/>
+						<mx:AdvancedDataGridColumnGroup headerText="09:00-10:00" dataField="h9"/>
+						<mx:AdvancedDataGridColumnGroup headerText="10:00-11:00" dataField="h10"/>
+						<mx:AdvancedDataGridColumnGroup headerText="11:00-12:00" dataField="h11"/>
+						<mx:AdvancedDataGridColumnGroup headerText="12:00-13:00" dataField="h12"/>
+						<mx:AdvancedDataGridColumnGroup headerText="13:00-14:00" dataField="h13"/>
+						<mx:AdvancedDataGridColumnGroup headerText="14:00-15:00" dataField="h14"/>
+						<mx:AdvancedDataGridColumnGroup headerText="15:00-16:00" dataField="h15"/>
+						<mx:AdvancedDataGridColumnGroup headerText="16:00-17:00" dataField="h16"/>
+						<mx:AdvancedDataGridColumnGroup headerText="17:00-18:00" dataField="h17"/>
+						<mx:AdvancedDataGridColumnGroup headerText="18:00-19:00" dataField="h18"/>
+						<mx:AdvancedDataGridColumnGroup headerText="19:00-20:00" dataField="h19"/>
+						<mx:AdvancedDataGridColumnGroup headerText="20:00-21:00" dataField="h20"/>
+						<mx:AdvancedDataGridColumnGroup headerText="21:00-22:00" dataField="h21"/>
+						<mx:AdvancedDataGridColumnGroup headerText="22:00-23:00" dataField="h22"/>
+						<mx:AdvancedDataGridColumnGroup headerText="23:00-00:00" dataField="h23"/>
+						
+					</mx:AdvancedDataGridColumnGroup>
+				</mx:groupedColumns>
+			</mx:AdvancedDataGrid>
+			<!--分页组件所在地-->
+			<flipBar:PageBar  id="pagebar1" rowConutOfPage="10" totalPageQuery="100" height="20"/>
+		</s:VGroup>
+	</s:VGroup>
+	<s:VGroup width="100%"  gap="0">
+		<s:Group width="100%"
+				 click="visableComp(result2)">
+			
+			<s:ToggleButton styleName="title"  width="100%" id="result2Button"/>
+			<s:Label text="各发射台各时段效果对比表"
+					 paddingTop="10"
+					 paddingLeft="30" 
+					 fontSize="14"
+					 />
+		</s:Group>
+		<s:VGroup width="100%" height="300" id="result2" visible="false" includeInLayout="false">
+			<mx:AdvancedDataGrid  width="100%" height="100%" textAlign="center" 
+								   dataProvider="{result2Arr}" styleName="effect" sortExpertMode="true">
+				<mx:groupedColumns>
+					<mx:AdvancedDataGridColumnGroup headerText="各发射台各时段效果对比表">
+						
+						<mx:AdvancedDataGridColumnGroup dataField="receive_name"  headerText="收测站点" />
+						<mx:AdvancedDataGridColumnGroup dataField="transmit_station"  headerText="发射台" />
+						<mx:AdvancedDataGridColumnGroup headerText="00:00-01:00" dataField="h0" />
+						<mx:AdvancedDataGridColumnGroup headerText="01:00-02:00" dataField="h1"/>
+						<mx:AdvancedDataGridColumnGroup headerText="02:00-03:00" dataField="h2"/>
+						<mx:AdvancedDataGridColumnGroup headerText="03:00-04:00" dataField="h3"/>
+						<mx:AdvancedDataGridColumnGroup headerText="04:00-05:00" dataField="h4"/>
+						<mx:AdvancedDataGridColumnGroup headerText="05:00-06:00" dataField="h5"/>
+						<mx:AdvancedDataGridColumnGroup headerText="06:00-07:00" dataField="h6"/>
+						<mx:AdvancedDataGridColumnGroup headerText="07:00-08:00" dataField="h7"/>
+						<mx:AdvancedDataGridColumnGroup headerText="08:00-09:00" dataField="h8"/>
+						<mx:AdvancedDataGridColumnGroup headerText="09:00-10:00" dataField="h9"/>
+						<mx:AdvancedDataGridColumnGroup headerText="10:00-11:00" dataField="h10"/>
+						<mx:AdvancedDataGridColumnGroup headerText="11:00-12:00" dataField="h11"/>
+						<mx:AdvancedDataGridColumnGroup headerText="12:00-13:00" dataField="h12"/>
+						<mx:AdvancedDataGridColumnGroup headerText="13:00-14:00" dataField="h13"/>
+						<mx:AdvancedDataGridColumnGroup headerText="14:00-15:00" dataField="h14"/>
+						<mx:AdvancedDataGridColumnGroup headerText="15:00-16:00" dataField="h15"/>
+						<mx:AdvancedDataGridColumnGroup headerText="16:00-17:00" dataField="h16"/>
+						<mx:AdvancedDataGridColumnGroup headerText="17:00-18:00" dataField="h17"/>
+						<mx:AdvancedDataGridColumnGroup headerText="18:00-19:00" dataField="h18"/>
+						<mx:AdvancedDataGridColumnGroup headerText="19:00-20:00" dataField="h19"/>
+						<mx:AdvancedDataGridColumnGroup headerText="20:00-21:00" dataField="h20"/>
+						<mx:AdvancedDataGridColumnGroup headerText="21:00-22:00" dataField="h21"/>
+						<mx:AdvancedDataGridColumnGroup headerText="22:00-23:00" dataField="h22"/>
+						<mx:AdvancedDataGridColumnGroup headerText="23:00-00:00" dataField="h23"/>
+						
+					</mx:AdvancedDataGridColumnGroup>
+				</mx:groupedColumns>
+			</mx:AdvancedDataGrid>
+			<!--分页组件所在地-->
+			<flipBar:PageBar  id="pagebar2" rowConutOfPage="10" totalPageQuery="100" height="20"/>
+		</s:VGroup>
+	</s:VGroup>	
+	<s:VGroup width="100%"  gap="0">
+		<s:Group width="100%"
+				 click="visableComp(result3)">
+			
+			<s:ToggleButton styleName="title"  width="100%"  id="result3Button"/>
+			<s:Label text="各频段各时段效果对比表"
+					 paddingTop="10"
+					 paddingLeft="30" 
+					 fontSize="14"
+					 />
+		</s:Group>
+		<s:VGroup width="100%" height="300" id="result3" visible="false" includeInLayout="false">
+			<mx:AdvancedDataGrid  width="100%" height="100%"  textAlign="center"  
+								  dataProvider="{result3Arr}" styleName="effect" sortExpertMode="true">
+				<mx:groupedColumns>
+					<mx:AdvancedDataGridColumnGroup headerText="各频段各时段效果对比表">
+						
+						<mx:AdvancedDataGridColumnGroup dataField="receive_name"  headerText="收测站点" />
+						<mx:AdvancedDataGridColumnGroup dataField="freq_type"  headerText="频段" />
+						<mx:AdvancedDataGridColumnGroup headerText="00:00-01:00" dataField="h0" />
+						<mx:AdvancedDataGridColumnGroup headerText="01:00-02:00" dataField="h1"/>
+						<mx:AdvancedDataGridColumnGroup headerText="02:00-03:00" dataField="h2"/>
+						<mx:AdvancedDataGridColumnGroup headerText="03:00-04:00" dataField="h3"/>
+						<mx:AdvancedDataGridColumnGroup headerText="04:00-05:00" dataField="h4"/>
+						<mx:AdvancedDataGridColumnGroup headerText="05:00-06:00" dataField="h5"/>
+						<mx:AdvancedDataGridColumnGroup headerText="06:00-07:00" dataField="h6"/>
+						<mx:AdvancedDataGridColumnGroup headerText="07:00-08:00" dataField="h7"/>
+						<mx:AdvancedDataGridColumnGroup headerText="08:00-09:00" dataField="h8"/>
+						<mx:AdvancedDataGridColumnGroup headerText="09:00-10:00" dataField="h9"/>
+						<mx:AdvancedDataGridColumnGroup headerText="10:00-11:00" dataField="h10"/>
+						<mx:AdvancedDataGridColumnGroup headerText="11:00-12:00" dataField="h11"/>
+						<mx:AdvancedDataGridColumnGroup headerText="12:00-13:00" dataField="h12"/>
+						<mx:AdvancedDataGridColumnGroup headerText="13:00-14:00" dataField="h13"/>
+						<mx:AdvancedDataGridColumnGroup headerText="14:00-15:00" dataField="h14"/>
+						<mx:AdvancedDataGridColumnGroup headerText="15:00-16:00" dataField="h15"/>
+						<mx:AdvancedDataGridColumnGroup headerText="16:00-17:00" dataField="h16"/>
+						<mx:AdvancedDataGridColumnGroup headerText="17:00-18:00" dataField="h17"/>
+						<mx:AdvancedDataGridColumnGroup headerText="18:00-19:00" dataField="h18"/>
+						<mx:AdvancedDataGridColumnGroup headerText="19:00-20:00" dataField="h19"/>
+						<mx:AdvancedDataGridColumnGroup headerText="20:00-21:00" dataField="h20"/>
+						<mx:AdvancedDataGridColumnGroup headerText="21:00-22:00" dataField="h21"/>
+						<mx:AdvancedDataGridColumnGroup headerText="22:00-23:00" dataField="h22"/>
+						<mx:AdvancedDataGridColumnGroup headerText="23:00-00:00" dataField="h23"/>
+						
+					</mx:AdvancedDataGridColumnGroup>
+				</mx:groupedColumns>
+			</mx:AdvancedDataGrid>
+			<!--分页组件所在地-->
+			<flipBar:PageBar  id="pagebar3" rowConutOfPage="10" totalPageQuery="100" height="20"/>
+		</s:VGroup>
+	</s:VGroup>
+	
+	
+	
+</system:BasePage>

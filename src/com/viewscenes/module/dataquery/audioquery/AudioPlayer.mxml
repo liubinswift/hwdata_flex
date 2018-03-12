@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="400" height="300"
+		 xmlns:player="com.viewscenes.utils.player.*"
+		 creationComplete="init()">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.viewscenes.beans.RadioStreamResultBean;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.utils.player.playBar.PlayBarEvent;
+			
+			//播放文件
+			[Bindable]
+			private var radioStreamResultBean:RadioStreamResultBean=null;
+			/**
+			 * 启动播放器
+			 */
+			public function play(obj:Object):void{
+				
+				if (obj is RadioStreamResultBean){
+					radioStreamResultBean=obj as RadioStreamResultBean;
+				}
+				var url:String=radioStreamResultBean.url;
+				if(url==null||url.length==0){
+					DataManager.showErrorMessage("无播放文件");
+				}else {
+					
+					player.setText("正在播放...");
+					player.playUrl(url);
+				}
+			}
+			/**
+			 * 初始方法
+			 */
+			private function init():void{
+				player.pb.addEventListener("stop",playerStop);
+				player.pb.addEventListener("play",playerPlay);
+			}
+			/**
+			 * 监听播放方法
+			 */
+			private function playerPlay(event:PlayBarEvent):void{
+		
+				player.pb.status = "play";
+				if(radioStreamResultBean==null){
+					player.stop();
+					DataManager.showErrorMessage("无播放文件");
+					player.setText("无节目信息");
+					return;
+				}
+			}
+			/**
+			 * 监听停止方法
+			 */
+			private function playerStop(event:PlayBarEvent):void{
+				player.pb.status = "stop";
+				player.stop();
+			}
+		]]>
+	</fx:Script>
+	<player:Player id="player" mode="record" width="100%" height="100%"/>
+</s:Group>

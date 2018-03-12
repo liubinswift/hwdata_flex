@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" 
+			   xmlns:ns1="com.fusioncharts.components.*"
+			   minWidth="955" minHeight="600"
+			   creationComplete="application1_creationCompleteHandler(event)" >
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+ 
+		<![CDATA[
+			
+			import mx.collections.ArrayCollection;
+			
+			import mx.events.FlexEvent;
+			[Bindable]
+			
+			private var singleData:ArrayCollection=new ArrayCollection([
+				
+				{label:'IT氧吧', value:'100'},
+				
+				{label:'flex', value:'45'},
+				
+				{label:'java', value:'18'},
+				
+				{label:'fusioncharts', value:'64'},
+				
+				{label:'php', value:'48'}]);
+			
+			
+			/**
+			 
+			 * 
+			 
+			 * 图表所需参数
+			 
+			 * */
+			
+			private function initial_param():XML
+				
+			{
+				
+				var temp:String="<param><data formatNumberScale='0' animation='1' /></param>";
+				
+				return XML(temp);
+				
+			}
+			
+			protected function application1_creationCompleteHandler(event:FlexEvent):void{
+				
+				fc.FCData(singleData);
+				
+				fc.FCParams(initial_param());
+				
+			}
+		]]>
+		
+	</fx:Script>
+	
+	<fx:Declarations>
+		
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+		
+	</fx:Declarations>
+	
+	<mx:Panel id="pan1" left="305" width="600" height="560">
+		
+		<mx:Canvas id="chart_can" width="100%" height="439">
+			<ns1:FusionCharts id="fc" width="100%" height="100%" FCChartType="Pie3D">
+			</ns1:FusionCharts>
+			
+		</mx:Canvas>
+		
+	</mx:Panel>
+	
+</s:Application>

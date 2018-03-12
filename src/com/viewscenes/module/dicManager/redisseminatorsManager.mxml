@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 xmlns:system="com.morcha4.frame.system.*" 
+				 xmlns:flipBar="com.viewscenes.utils.flipBar.*"
+				 width="100%" height="100%" creationComplete="init()">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCException;
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.util.RendererUtil;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.SystemInit;
+			import com.viewscenes.global.comp.MM;
+			[Bindable] private var countryArr:ArrayCollection = new ArrayCollection();
+			[Bindable] private var info:ArrayCollection = new ArrayCollection();
+			private function init():void{
+//				queryCountry();
+			}
+			/**
+			 * 查询国家
+			 * */
+			private function queryCountry():void{
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getCountryList",null,getCountryListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getCountryListBack(arr:ArrayCollection):void{
+				countryArr.removeAll();
+				countryArr=arr;
+				countryArr.addItemAt("全部",0);
+				
+			}
+			
+			private function addInfo():void{
+				var obj:Object = new Object();
+				if(redisseminators.text==""){
+					DataManager.showErrorMessage("转播机构不能为空!");
+					return;
+				}else{
+					obj.redisseminators = redisseminators.text;
+				}
+				if(country.text==""){
+					DataManager.showErrorMessage("所属国家不能为空");
+					return;
+				}else
+					obj.country = country.text;
+				var request:RORequestParam =new RORequestParam("com.viewscenes.web.dicManager.RedisseminatorsManager","addRedisseminators",obj,addBack,DataManager.showErrorMessageBack);
+				RPCManager.sendCmd(request);
+			}
+			
+			private function addBack(res:String):void{
+				var si:SystemInit = new SystemInit();  
+				si.getConfigData();
+				MM.show(res);
+				queryInfo();
+			}
+			
+			/**
+			 * 保存修改的数据
+			 * */
+			private function updateInfo():void{
+				var object:Object=new Object();
+				var list:ArrayCollection=new ArrayCollection();
+				if(info.length==0){
+					MM.show("没有需要保存修改的数据项!");
+					return;
+				}
+				for(var i:int=0;i<info.length;i++){
+					if(info.getItemAt(i).isSelected=="true"){
+						//修改原来的数据
+						var obj:Object = new Object();
+						obj.id = info.getItemAt(i).id;
+						obj.redisseminators=info.getItemAt(i).redisseminators;
+						obj.country = info.getItemAt(i).country;
+						list.addItem(obj);
+					}
+				}
+				if(list.length==0){
+					MM.show("没有需要保存修改的数据项!");
+					return;
+				}
+				object.list=list;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dicManager.RedisseminatorsManager","updateRedisseminatorsList",object,updateBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function updateBack(res:String):void{
+				if(res.indexOf('成功')>=0){
+					var si:SystemInit = new SystemInit();  
+					si.getConfigData();
+					MM.show(res);
+					queryInfo();
+				}else{
+					DataManager.showErrorMessage(res);
+					info.removeAll();
+				}
+			}
+			
+			private function queryInfo():void{
+				info.removeAll();
+				clew_label.visible=true;
+				clew_label.includeInLayout=true;
+				var obj:Object = new Object();
+				obj.redisseminators = redisseminators.text;
+				obj.country = country.text;
+				var request:RORequestParam =new RORequestParam("com.viewscenes.web.dicManager.RedisseminatorsManager","queryRedisseminators",obj,queryBack,DataManager.showErrorMessageBack);
+				RPCManager.sendCmd(request);
+			}
+			
+			private function queryBack(arr:ArrayCollection):void{
+				if(arr.length==0){					
+					obj = new Object();
+					obj.resultList = new ArrayCollection();
+					obj.resultTotal = 0;
+					pagebar.m_queryProcess(obj,showBackDetailMethod);
+					return;
+				}else{
+					var obj:Object=new Object();
+					obj.resultList=arr;
+					obj.resultTotal=obj.resultList.length
+					pagebar.m_queryProcess(obj,showBackDetailMethod);
+				}
+			}
+			private function showBackDetailMethod(obj:ArrayCollection):void{
+				clew_label.visible=false;
+				clew_label.includeInLayout=false;
+				info.removeAll();
+				if(obj.length==0){
+					clew_label.text="无查询数据！";
+					clew_label.visible=true;
+					clew_label.includeInLayout=true;					
+				}else{					
+					info=obj ;
+				}					
+				
+			}
+			/**
+			 * 删除转播机构信息
+			 * */
+			var ids:String="";
+			private function delRedisseminators():void{
+				ids="";
+				var flag:Boolean=true;
+				for(var i:int=0;i<info.length;i++){
+					if(info.getItemAt(i).isSelected=="true"){
+						flag=false;
+						if(info.getItemAt(i).id!=""){
+							ids+="'"+info.getItemAt(i).id+"',";
+						}
+						
+					}
+				}
+				if(flag){
+					MM.show("请选择要删除的项!");
+				}else{
+					if(ids!=""){
+						MM.show("您确定要删除吗?","删除转播机构",'',confirmDel,true,cancelHandler,null);
+					}else{
+						MM.show("删除转播机构信息成功!","","",queryInfo);
+					}
+				}
+			}
+			/**
+			 * 取消回调方法
+			 * */
+			private function cancelHandler():void{
+				ids="";
+			}
+			
+			private function confirmDel():void{
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dicManager.RedisseminatorsManager","delRedisseminators",ids.substr(0,ids.length-1),delBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function delBack(res:String):void{
+				var si:SystemInit = new SystemInit();  
+				si.getConfigData();
+				ids="";
+				MM.show(res);
+				queryInfo();
+			}
+			
+			/**
+			 * 全选操作
+			 * */
+			private var selectState:String =" false";// 记录选中的状态
+			
+			private function selectAll():void{
+				if(btn1.label=="全选"){
+					btn1.label="取消全选";
+					selectState="true";
+				}else{
+					btn1.label="全选";
+					selectState="false";
+				}
+				for(var i:int=0;i<info.length;i++){
+					var obj:Object = info.getItemAt(i) as Object;
+					obj.isSelected=selectState;
+				}
+				info.refresh();
+				
+			}
+			
+			
+			
+			//选择点中后执行的方法
+			private function changeSelect(obj:Object):void{
+				if(obj.data.isSelected=="true"){
+//					this.selectedCounts=selectedCounts+1;  
+				}else{
+//					this.selectedCounts=selectedCounts-1; 
+				}
+			}
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%"  horizontalAlign="center" verticalAlign="middle">
+		<s:HGroup width="100%" height="25" verticalAlign="middle"  horizontalAlign="center" >
+			<s:Label text="转播机构:"/>
+			<s:TextInput id="redisseminators" width="100"/>
+			<s:Label text="所属国家:"/>
+			<s:TextInput id="country" width="100" />
+			<s:Button buttonMode="true" label="查询" click="queryInfo()" />
+			<s:Button buttonMode="true" label="增加" click="addInfo()"/>
+			<s:Button buttonMode="true" label="保存修改" click="updateInfo()" />
+			<s:Button buttonMode="true" label="全选" id="btn1" click="selectAll()" />
+			<s:Button buttonMode="true" label="删除" click="delRedisseminators()" />
+		</s:HGroup>
+		<mx:Canvas  width="100%" height="100%">
+			<s:DataGrid width="100%" height="100%" editable="true"  id="grid" textAlign="center" dataProvider="{info}">
+				<s:columns>
+					<s:ArrayCollection>
+						<s:GridColumn headerText="选择" width="60" editable="false" itemRenderer="{RendererUtil.getCheckBoxRenderer(changeSelect)}" />
+						<s:GridColumn dataField="redisseminators"  headerText="转播机构" />
+						<s:GridColumn dataField="country"  headerText="所属国家" />
+					</s:ArrayCollection>
+				</s:columns>
+			</s:DataGrid>
+			<s:Label text="正在查询，请稍候..." id="clew_label" y="{grid.columnHeaderGroup.height+10}" color="0x000000" fontSize="15" width="100%" textAlign="center"  visible="false" includeInLayout="false" />
+		</mx:Canvas>	
+		<flipBar:PageBar width="100%" id="pagebar" rowConutOfPage="40" totalPageQuery="5" height="20"/>
+		
+	</s:VGroup>
+</system:BasePage>

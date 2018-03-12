@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" xmlns:menu="com.viewscenes.global.menu.*"
+		 creationComplete="init()" xmlns:advancedComboBox="com.morcha4.ui.advancedComboBox.*" xmlns:global="com.viewscenes.global.*"
+		 xmlns:showmessage="com.viewscenes.module.log.*"
+		 xmlns:contaners="com.morcha4.ui.contaners.*" xmlns:alert="com.viewscenes.global.comp.alert.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+		<s:Animate target="{this}" id="topMove">
+			<s:MotionPath property="leftWidth">
+				<s:Keyframe value="0"/>
+				<s:Keyframe value="-248"/>
+			</s:MotionPath>
+		</s:Animate>
+	</fx:Declarations>
+	<s:BitmapImage fillMode="clip" source="{getStyle('logoSrcBG')}" id="bannerBG" top="15"/>
+	<s:BitmapImage fillMode="scale" source="{getStyle('bannerBG')}" top="0" width="100%"/>
+	<s:HGroup width="100%" top="5" paddingLeft="15" paddingRight="3" gap="0">
+		<s:Label text="国家新闻出版广电总局573台版权所有" color="0x888888"/>
+		<s:Label text="|" color="0xffffff"/>
+		<s:Label text="Bate1.0" id="version" color="0x000000"/>
+		<s:Spacer width="100%"/>
+		<s:HGroup gap="5">
+			<s:BitmapImage fillMode="clip" source="{getStyle('bannerLOGO')}"/>
+			<s:Label text="当前用户" color="0x888888"/>
+			<s:Label text="{userName}" id="currUser" color="0x000000"/>
+			<s:Label text="登录时间" color="0x888888"/>
+			<s:Label text="" id="loginTime" color="0x000000"/>
+			<s:Image width="100%" source="{getStyle('bannerCloseSrc')}" buttonMode="true" 
+					 click="logout()"/>
+		</s:HGroup>
+	</s:HGroup>
+	
+	
+	<contaners:BGAbleContainer backgroundImage="{getStyle('leftBG')}" width="248" top="{topHeight+18}" left="{leftWidth}" bottom="0"  id="leftPan">
+		<contaners:layout>
+			<s:VerticalLayout horizontalAlign="center" verticalAlign="top" gap="0"/>
+		</contaners:layout>
+		<s:BorderContainer backgroundImage="{getStyle('logoGB')}" width="247" height="126" borderVisible="false">
+			<s:layout>
+				<s:VerticalLayout horizontalAlign="center" verticalAlign="middle" gap="0"/>
+			</s:layout>
+			<s:BitmapImage source="{getStyle('logoSrc')}"/>
+		</s:BorderContainer>
+		<s:Group width="100%"  height="530">
+			<menu:Menu1 right="0" id="m1" left="0" top="0" bottom="0"/>
+			<s:Image source="{getStyle('shrinkSrc')}" click="leftResize_effectEndHandler()" right="0" top="-4" bottom="0"/>
+		</s:Group>
+		<s:Image source="{getStyle('leftBGBottom')}" width="248" height="100%"/>
+		<!--s:TitleWindow id="notes" height="100%" width="100%"/-->
+	</contaners:BGAbleContainer>
+	
+	<s:VGroup height="100%" width="100%" top="{topHeight+22}" left="{leftWidth+248}" bottom="0" gap="0">
+		<menu:Menu2 width="100%" id="menu2"/>
+		<menu:Menu3 width="100%" id="menu3" right="5"/>
+		<contaners:BGAbleContainer id="mainPage" width="100%" height="100%" left="{leftWidth+255}" right="5" backgroundColors="['0xffffff','0xffffff']">
+			<contaners:layout>
+				<s:HorizontalLayout paddingLeft="5" paddingTop="5" paddingBottom="5" paddingRight="5"/>
+			</contaners:layout>
+			<s:Group width="100%" height="100%" id="mainVS" />
+		</contaners:BGAbleContainer>
+	</s:VGroup>
+	<s:Image source="{getStyle('ejectSrc')}" click="leftResize_effectEndHandler()" left="{leftWidth+247}" 
+			 id="eject" top="{topHeight+146}" visible="false" mouseOver="{eject.alpha=1}" mouseOut="{eject.alpha=0.1}"/>
+	<showmessage:ShowShiftLog id="showLog" bottom="0" right="230"  width="230" height="250" visible="false">	 
+		</showmessage:ShowShiftLog>
+	<showmessage:ShowMessage id="showMess" bottom="0" right="0"  width="230" height="250" visible="false">	 
+	</showmessage:ShowMessage>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.frame.PageFrame;
+			import com.morcha4.frame.PageTransformManager;
+			import com.morcha4.frame.menu.BaseMenu;
+			import com.morcha4.frame.nav.NavManager;
+			import com.morcha4.frame.nav.NavParam;
+			import com.morcha4.frame.system.AdvancedEvent;
+			import com.morcha4.frame.system.EventBus;
+			import com.morcha4.util.XMLUtil;
+			import com.viewscenes.beans.user.PubUserBean;
+			import com.viewscenes.global.comp.MM;
+			import com.viewscenes.utils.timecomp.DateUtil;
+			
+			import mx.collections.ArrayCollection;
+
+			[Bindable]public var topHeight:int=0;
+			[Bindable]public var leftWidth:int=0;
+			[Bindable]private var userName:String="";
+			[Bindable]public var shiftList:ArrayCollection=new ArrayCollection();
+			
+			private function init():void{
+				EventBus.addEventListener(EventDeclare.SYSTEM_INIT_COMPLETED,onInitComplete);
+				
+				EventBus.addEventListener(EventDeclare.LOGIN_USERNAME,function(e:AdvancedEvent):void{userName = e.data.toString()});
+				
+				PageTransformManager.getInstance().addEventListener(PageTransformManager.BEGIN_LOADING_PAGE,changepage);
+			}
+			/**
+			 * 获取系统公共数据
+			 */
+			public function getMessage():void
+			{
+				
+				
+				var obj:Object = new Object;
+				obj.userid=DataManager.user.userId;
+				
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getMessageData",obj,messageDataBack,DataManager.showErrorMessageBack));
+			}
+			public function getShiftLog():void
+			{	
+				var obj:Object = new Object;			
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getShiftLogData",obj,shiftmessageDataBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function messageDataBack(list:ArrayCollection):void
+			{
+				
+				if(list.length>0)
+				{
+					this.showMess.visible=true;
+					this.showMess.setBean(list);
+					
+				}
+			}
+			private function shiftmessageDataBack(list:ArrayCollection):void
+			{
+				shiftList=list;
+				if(shiftList.length>0)
+				{
+				    this.showLog.visible=true;
+					this.showLog.setBean(shiftList);
+					
+				}
+			}
+			private function onInitComplete(e:Event):void{
+				loginTime.text = DateUtil.date2str(new Date);
+				this.visible = true;//test
+				PageFrame.getInstance().useEffect=false;//是否使用页面切换效果
+				PageFrame.getInstance().pageFrameInstance=mainVS;
+				NavManager.getInstance().menu=DataManager.menu;
+//				mx.controls.Alert.show(DataManager.menu+"");
+				NavManager.getInstance().processMenu=this.processMenu;
+//				NavManager.getInstance().dispatchEvent(new AdvancedEvent(NavManager.MODULE_NAV,false,false,new NavParam(null,null,
+//					XMLUtil.getFNodeByAttribute(DataManager.menu,"select","true","node",true))));
+				NavManager.getInstance().dispatchEvent(new AdvancedEvent(NavManager.MODULE_NAV,false,false,new NavParam(null,"/主页", null)));
+				/**
+				 * 添加人：刘斌 
+				 * 添加日期 ：2012.11.23
+				 * 目的：用于用户登录后看是否有提示信息的显示；
+				 * 
+				 **/
+				this.getMessage();
+				this.getShiftLog();
+				
+			}
+			
+			
+			public function processMenu(xml:XML):void{
+				m1.dataProvider=xml.node;
+				
+				
+				changeMenu2State(true);
+				menu2.dataProvider=XMLUtil.getNodeByAttribute(xml.node,"select","true",true,true).node;
+				if(menu2.dataProvider.length()>0){
+					if(XMLUtil.getNodeByAttribute(menu2.dataProvider,"select","true",true,true).node == null){
+						menu3.dataProvider = new XMLList();
+					} else {
+						menu3.dataProvider=XMLUtil.getNodeByAttribute(menu2.dataProvider,"select","true",true,true).node;
+					}
+				}else{
+					menu3.dataProvider=null;
+				}
+				changeMenu2State((menu2.dataProvider != null && menu2.dataProvider.length()>0));
+				//				sp.includeInLayout=m3.dataProvider&&m3.dataProvider.length()!=0;
+				NavManager.getInstance().dispatchEvent(new AdvancedEvent(NavManager.MENU_COMPLETE,false,false));
+				BaseMenu.enableChanged=false;
+			}
+			private function changeMenu2State(hide:Boolean):void{
+				menu2.visible = hide;
+				menu2.includeInLayout = hide;
+				menu3.visible = hide;
+				menu3.includeInLayout = hide;
+				if(menu3.dataProvider==null ||menu3.dataProvider.length()==0){
+					menu3.visible = false;
+					menu3.includeInLayout = false ;
+				}
+				if(menu2.dataProvider==null ||menu2.dataProvider.length()==0){
+					menu2.visible = false;
+					menu2.includeInLayout = false ;
+				}
+//				if(!menu2.visible){
+//					mainPage.top = "{topHeight+22}";
+//					mainPage.setStyle("backgroundColors",['0x565555','0x565555']);
+//				} else{
+//					mainPage.top = "{topHeight+22}";
+//					mainPage.setStyle("backgroundColors",['0x565555','0x565555']);
+//				}
+//				Alert.show(m1.dataProvider+"dddd");
+			}
+			protected function leftResize_effectEndHandler():void
+			{
+				if(leftPan.left==0){
+					eject.visible=true;
+				} else{
+					eject.visible=false;
+				}
+				topMove.play(null,leftWidth==-248)
+				
+			}
+			private var currStyle:String="DefaultStyle.swf";
+			
+			/**
+			 * 切换到具体页面
+			 */
+			private function changepage(e:Event):void{
+				
+				changeMenu2State(true);
+				
+			}
+			private function logout():void{
+				MM.show('确定退出吗？','退出确认','',confirmDel,true,null,null);
+				
+			}
+			private function confirmDel():void{
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.sysmgr.user.OnlineUserManager","logout",DataManager.user,_logout,DataManager.showErrorMessageBack));
+			}
+			private function _logout(obj:Object):void{
+				navigateToURL(new URLRequest('javascript:window.opener=null;window.close()'),'_self')			
+			}
+		]]>
+	</fx:Script>
+	
+
+</s:Group>

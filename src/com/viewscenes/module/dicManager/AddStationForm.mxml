@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" close="close(event);"
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%"
+			   creationComplete="init();" 
+			   xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+			   xmlns:ip="com.viewscenes.utils.tools.*"
+			   mouseDown="startDrag()"
+			   title="添加发射台信息"
+			   mouseUp="stopDrag();">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.viewscenes.beans.dicManager.StationBean;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+			
+			import mx.collections.ArrayCollection;
+			import mx.managers.PopUpManager;
+			[Bindable]			
+			private var typeArr:ArrayCollection=new ArrayCollection(["国内直属","国内地方","海外直属","海外转播"]);
+			[Bindable]
+			private var allStationArr:ArrayCollection=new ArrayCollection;
+			private function init():void{
+				queryAllStation();
+			}
+			/**
+			 * 查询所有发射台信息
+			 */
+			private function queryAllStation():void{
+				var obj:Object=new Object();
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dicManager.StationManager","queryAllStation",obj,_queryAllStation,DataManager.showErrorMessageBack));
+			}
+			private function _queryAllStation(arr:ArrayCollection):void{
+				allStationArr.removeAll();
+				allStationArr=arr;
+			}
+			private function addStation():void{
+				if(validPsw()){
+					return;
+				}
+				var bean:StationBean=new StationBean();
+				bean.name=station_name.text;				
+				bean.code=code.text;
+				if(station_type.selectedIndex!=-1){
+					bean.station_type=station_type.selectedItem;
+				}
+				bean.country=country.text;
+				bean.broadcast_direction=broadcast_direction.text;
+				bean.province=province.text;
+				bean.city=city.text;
+				bean.county=county.text;
+				bean.address=address.text;
+				bean.longitude =longitude.text.toUpperCase();
+				bean.latitude = latitude.text.toUpperCase();
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dicManager.StationManager","addStation",bean,_addStation,DataManager.showErrorMessageBack));
+
+			}
+			private function _addStation(obj:Object):void{
+				close(null);
+				MM.show("添加发射台成功","","",addEvent);
+			}
+			private function addEvent():void{
+				this.dispatchEvent(new Event("station_refrash"));
+			}
+			private function validPsw():Boolean{
+				if(station_name.text==""||station_name.text.length==0){
+					MM.show("发射台名称不能为空");
+					return true;
+				}
+				for(var n:int=0;n<allStationArr.length;n++){
+					
+					if(station_name.text==allStationArr[n].name){
+						MM.show("发射台名称已存在");
+						return true;
+					}
+				}
+				if(code.text==""||code.text.length==0){
+					MM.show("发射台代号不能为空");
+					return true;
+				}
+				for(var n:int=0;n<allStationArr.length;n++){
+					if(code.text==allStationArr[n].code){
+						MM.show("发射台代号已存在");
+						return true;
+					}
+				}
+				var regExp:RegExp=/^(\d+)(E?W?S?N?)(\d+)?$/;
+				if(longitude.text!=""){
+					var str:String =longitude.text.toUpperCase();
+					if(regExp.test(str)){
+						if(str.indexOf("E")!=-1&&str.indexOf("W")!=-1){
+							MM.show("经度输入格式不正确");
+							return true;
+						}
+					}else{
+						MM.show("经度输入格式不正确");
+						return true;
+					}
+				}
+				if(latitude.text!=""){
+					str =latitude.text.toUpperCase();
+					if(regExp.test(str)){
+						if(str.indexOf("S")!=-1&&str.indexOf("N")!=-1){
+							MM.show("纬度输入格式不正确");
+							return true;
+						}
+					}else{	
+						MM.show("纬度输入格式不正确");
+						return true;
+					}
+				}
+				return false;
+			}
+			private function close(event:Event):void{
+				PopUpManager.removePopUp(this);
+			}
+		]]>
+	</fx:Script>
+	<s:HGroup >
+		<s:Form >
+			<s:FormItem label="发射台名称" height="20" >
+				<s:TextInput id="station_name" />
+			</s:FormItem>
+			<s:FormItem label=" 代     号" height="20" >
+				<s:TextInput id="code" />
+			</s:FormItem>
+			<s:FormItem label=" 播向区 " height="20" >
+				<s:TextInput id="broadcast_direction" />
+			</s:FormItem>
+			
+			<s:FormItem label="发射台所属" height="20">
+				<s:ComboBox id="station_type"  dataProvider="{typeArr}" />
+			</s:FormItem>
+			<s:FormItem label=" 国    家" height="20" >
+				<s:TextInput id="country" />
+			</s:FormItem>
+			<s:FormItem label="    省" height="20">
+				<s:TextInput id="province" />
+			</s:FormItem>
+			<s:FormItem label="    市" height="20">
+				<s:TextInput id="city" />
+			</s:FormItem>
+			<s:FormItem label="    县" height="20" >
+				<s:TextInput id="county" />
+			</s:FormItem>
+			<s:FormItem label=" 地    址" height="20">
+				<s:TextInput id="address" />
+			</s:FormItem>
+			<s:FormItem label=" 经    度" height="20">
+				<s:TextInput id="longitude"  restrict="0-9\ewEW"/>
+			</s:FormItem>
+			<s:FormItem label=" 纬    度" height="20">
+				<s:TextInput id="latitude" restrict="0-9\snSN"/>
+			</s:FormItem>
+			<s:FormItem height="20">
+				<s:layout>
+					<s:HorizontalLayout/>
+				</s:layout>
+				<s:Button buttonMode="true" label="添加" click="addStation();"/>
+				<s:Button buttonMode="true" label="取消" click="close(null)"/>
+			</s:FormItem>
+		</s:Form>		
+	</s:HGroup>
+</s:TitleWindow>

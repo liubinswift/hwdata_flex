@@ -1,0 +1,569 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 xmlns:system="com.morcha4.frame.system.*"
+				 width="100%" height="100%" 
+				 creationComplete="initApp();" 
+				 
+				 xmlns:timecomp="com.viewscenes.utils.timecomp.*"			
+				 xmlns:flipBar="com.viewscenes.utils.flipBar.*" 
+				 xmlns:player="com.viewscenes.utils.player.*" xmlns:audioquery="com.viewscenes.module.dataquery.audioquery.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+		<s:RadioButtonGroup id="timeCheckGroup" />
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.util.RendererUtil;
+			import com.viewscenes.beans.RadioMarkZstViewBean;
+			import com.viewscenes.beans.RadioStreamResultBean;
+			import com.viewscenes.beans.pub.ResHeadendBean;
+			import com.viewscenes.beans.runplan.RunplanBean;
+			import com.viewscenes.beans.task.Task;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+			import com.viewscenes.utils.StringTool;
+			import com.viewscenes.utils.timecomp.DateUtil;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.CloseEvent;
+			import mx.managers.PopUpManager;
+			
+			import adobe.utils.MMEndCommand;
+			
+			import flashx.textLayout.operations.RedoOperation;
+			//数据库 录音文件数据
+			[Bindable]
+			private var recFileArray:ArrayCollection=new ArrayCollection();
+			//录音类型 ：全部  效果录音 质量录音 
+			[Bindable]
+			private var recType:ArrayCollection = new ArrayCollection([{label:"全部",data:"-1"},{label:"效果录音",data:"0"},{label:"质量录音",data:"1"}]);
+			[Bindable]
+			private var handles:ArrayCollection = new ArrayCollection([{label:"全部",data:"-1"},{label:"未处理",data:"0"},{label:"已处理",data:"1"}]);
+			[Bindable]
+			private var headTypes:ArrayCollection=new ArrayCollection([{label:"遥控站",data:"102"},{label:"采集点",data:"101"}]);
+			//节目类型
+			[Bindable]
+			private var programTypes:ArrayCollection = new ArrayCollection([{label:"全部",data:""},{label:"国际台节目",data:"1"},{label:"海外落地节目",data:"2"}]);
+			
+			//遥控站点
+			[Bindable]
+			public var ykzArr:ArrayCollection = new ArrayCollection;
+			//采集点
+			[Bindable]
+			public var cjdArr:ArrayCollection = new ArrayCollection;
+			[Bindable]
+			private var headtype:int=1;
+			//站点
+			[Bindable]
+			public var headendArr:ArrayCollection = new ArrayCollection;
+			//发射台
+			[Bindable]
+			private var stationArr:ArrayCollection=new ArrayCollection;
+			//语言
+			[Bindable]
+			private var languageArr:ArrayCollection=new ArrayCollection;
+			
+			[Bindable]
+			private var headCode:String="";
+			private function initApp():void{
+				
+				cjdArr=DataManager.getHeadendByState("all","101",true);	
+				cjdArr.addItemAt({shortname:"全部",code:""},0);
+				ykzArr=DataManager.getHeadendByState("all","102",true);
+				ykzArr.addItemAt({shortname:"全部",code:""},0);
+				
+				typeChange();
+				getLanguageList();
+				queryStation();
+			}
+			/**
+			/**
+			 * 查询发射台信息
+			 * */
+			private function queryStation():void{
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getStationList",null,getStationListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getStationListBack(arr:ArrayCollection):void{
+				stationArr.removeAll();
+				stationArr = arr;
+				stationArr.addItemAt({name:"全部",station_id:""},0);
+				station.selectedIndex = 0;
+			}
+			
+			/**
+			 * 
+			 * 语言
+			 * */
+			private function getLanguageList():void{
+				var obj:Object = new Object;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getLanguageList",obj,getLanguageListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getLanguageListBack(arr:ArrayCollection):void{
+				languageArr.removeAll();
+				
+				for(var i:int = 0;i<arr.length; i++){
+					var obj:Object = arr.getItemAt(i);
+					
+					languageArr.addItemAt({label:obj.language_name,value:obj.language_id},i);
+				}
+				languageArr.addItemAt({label:"全部",value:""},0);
+				language.selectedIndex=0;
+			}
+			/**
+			 * 查询数据库录音文件及相关打分信息
+			 */ 
+			private function recFileQuery():void//主要作用在于初始化
+			{
+				recFileArray.removeAll();
+				
+				
+				//校验频率
+				if (freq.text != "" && StringTool.getBandFromFreq(freq.text) == ""){
+					DataManager.showErrorMessage("输入的频率范围不合法,请重新输入");
+					freq.setFocus();
+					return ;
+				}
+				
+				//校验时间
+				var result:Number = DateUtil.compareDateStr(startDatetime.text,endDatetime.text);
+				if (result != -1){
+					DataManager.showErrorMessage("开始时间不能大于或等于结束时间");
+					return ;
+				}
+				
+				showTips(true);
+				var obj:Object = new Object;
+				//录音类型
+				obj.recType = type.selectedItem.data;
+				if (newHead.selectedItem == undefined || newHead.selectedItem.shortname == "全部"){
+					obj.headCode="";
+				}else{
+					obj.headCode = newHead.selectedItem.code;
+				}
+				obj.freq = freq.text;
+				obj.type = programType.selectedItem.data;
+				obj.dateType = timeCheckGroup.selectedValue;
+				obj.headType=headType.selectedItem.data;
+				if (timeCheckGroup.selectedValue == "byDate")
+					obj.date = day.text;
+				else{
+					obj.startDateTime = startDatetime.text;
+					obj.endDateTime = endDatetime.text;
+				}
+				if(station.selectedIndex!=0){
+					obj.station=station.selectedItem.station_id;
+				}
+				if(language.selectedIndex!=0){
+					obj.language=language.selectedItem.label;
+				}
+				obj.handle = handle.selectedItem.data;
+				pagebar.m_sendCmd(new RORequestParam("com.viewscenes.web.dataquery.audioquery.AudioFileQuery","recFileQuery",obj,recFileQueryBack,DataManager.showErrorMessageBack));
+			}
+			private function recFileQueryBack(arr:ArrayCollection):void{
+				if(arr.length!=0){
+					showTips(false);
+					recFileArray = arr;
+				}else{
+					clew_label.text="无相关查询数据";
+				}
+			}
+			/**
+			 * 站点类型改变
+			 */
+			private function typeChange():void{
+				//				recFileArray.removeAll();
+				//				audioPlayer.player.stop();
+				if(headType.selectedItem.label.toString()=="采集点"){
+					headtype=0;
+					con_clewlabel(clew_label,false);
+					headendArr.removeAll();
+					//var arrlist:ArrayCollection =  StringTool.clone(cjdArr);
+					headendArr=cjdArr;
+					newHead.selectedIndex=0;
+				
+				}else if(headType.selectedItem.label.toString()=="遥控站"){	
+					headtype=1;
+					con_clewlabel(clew_label,false);
+					headendArr.removeAll();
+					//bvar arrlist:ArrayCollection =  StringTool.clone(ykzArr);	
+					headendArr=ykzArr;
+					newHead.selectedIndex=0;	
+					
+				}
+			}
+			public function con_clewlabel(_component:Label,_visible:Boolean,_label:String="")
+			{
+				_component.visible=_visible;
+				_component.includeInLayout=_visible;
+				_component.text=_label;
+			}
+			/**
+			 *查询所按日期方式
+			 * 
+			 */
+			private function timeCheck(e:MouseEvent):void{
+				if(e.target.label=="按时间段"){
+					day.visible=false;
+					day.includeInLayout=false;
+					begintimelabel.text="起始日期";
+					startDatetime.visible=true;
+					startDatetime.includeInLayout=true;
+					endDatetime.visible=true;
+					endDatetime.includeInLayout=true;
+					endtimelabel.visible=true;
+				} else{
+					day.visible=true;
+					day.includeInLayout=true;
+					begintimelabel.text="查询时间";
+					startDatetime.visible=false;
+					startDatetime.includeInLayout=false;
+					endDatetime.visible=false;
+					endDatetime.includeInLayout=false;
+					endtimelabel.visible=false;
+				}
+			}
+			/**
+			 * 查询时提示信息
+			 */ 
+			private function showTips(b:Boolean):void{
+				
+				if (b == true){
+					clew_label.y = result.y+32;
+					clew_label.visible = true;
+					clew_label.includeInLayout = true;
+					clew_label.text = "正在查询,请稍候...";
+				}else{
+					clew_label.visible = false
+					clew_label.includeInLayout = false;
+					clew_label.text = "";
+				}
+			}
+			/**
+			 * 波段标签
+			 */
+			private function bandFunction(item:Object,gc:GridColumn):String{
+				if(item.band=="0"){
+					return "短波";
+				}else if(item.band=="1"){
+					return "中波";
+				}else{
+					return "调频";
+				}
+			}
+			/**
+			 * 录音类型标签
+			 */
+			private function reportFunction(item:Object,gc:GridColumn):String{
+				if(item.report_type=="0"){
+					return "效果";
+				}else if(item.report_type=="1"){
+					return "质量";
+				}else {
+					return "";
+				}
+			}
+			/**
+			 *发射台标签 
+			 */
+			private function stationLabelFunc(item:Object,gc:GridColumn):String{
+				var runplanBean:RunplanBean=item.runplanBean as RunplanBean;
+				if (runplanBean!=null){
+					return runplanBean.station_name;
+				}else{
+					return "";
+				}
+				
+			}
+			/**
+			 * 节目标签
+			 */
+			private function programLabelFunc(item:Object,gc:GridColumn):String{
+				var runplanBean:RunplanBean=item.runplanBean as RunplanBean;
+				if (runplanBean!=null){
+					return runplanBean.language_name;
+				}else{
+					return "";
+				}
+				
+			}
+			private var selectedCounts:int=0;
+			/**
+			 * 选择点中后执行的方法
+			 */
+			private function changeSelect(obj:Object):void{
+				selectAll.selected=false;
+				if(obj.data.isSelected=="true"){
+					this.selectedCounts=selectedCounts+1;  
+				}else{
+					this.selectedCounts=selectedCounts-1; 
+				}
+				if(selectedCounts==recFileArray.length){
+					selectAll.selected=true;	
+				}
+			}
+			/**
+			 * 打分标签
+			 */
+			private function markFunction(item:Object,gc:GridColumn):String{
+				var radioMarkZstViewBean:RadioMarkZstViewBean =item.radioMarkZstViewBean as RadioMarkZstViewBean;
+				if(radioMarkZstViewBean!=null&&radioMarkZstViewBean.mark_id!=""){
+					return radioMarkZstViewBean.counts+"/"+radioMarkZstViewBean.counti+"/"+radioMarkZstViewBean.counto;
+				}else {
+					return "";
+				}
+			}
+			/**
+			 * 给节目打分
+			 */
+			private function mark(obj:Object):void{
+				openMarkForm(obj.data);
+				
+			}
+			private function openMarkForm(obj:Object):void{
+				var pop:AudioFileMark = AudioFileMark(PopUpManager.createPopUp(this,AudioFileMark,true));
+				
+				pop.setRadio(obj as RadioStreamResultBean);
+				PopUpManager.centerPopUp(pop);
+				
+				pop.addEventListener("AudioFile_refresh",refrehFileQuery);
+			}
+			private function refrehFileQuery(event:Event):void{
+				recFileQuery();
+			}
+			/**
+			 * 播放录音文件
+			 */
+			private function play(obj:Object):void{
+				var radioStreamResultBean:RadioStreamResultBean = obj.data as RadioStreamResultBean;
+				
+				audioPlayer.play(radioStreamResultBean);
+			}
+			
+			/**
+			 * 下载录音文件
+			 */
+			private function downloadRec(obj:Object):void{
+				
+				var radioStreamResultBean:RadioStreamResultBean = obj.data as RadioStreamResultBean;
+				var url:String=radioStreamResultBean.url;
+				//				var url:ArrayCollection=new ArrayCollection();
+				//					url.addItem( radioStreamResultBean.url);
+				//				var arr:Array = new Array();
+				//				arr.push(radioStreamResultBean.url);
+				//				downloadHtml.callIFrameFunction("downloadByUrl",arr);
+				
+				downLoadFiles(url);
+			}
+			private var downloadURL:URLRequest;
+			private var DownLoadfile:FileReference; //这是要主要的地方
+			/**
+			 * 下使用FileReference组件下载
+			 */
+			private function downLoadFiles(urlAdd:String):void
+			{
+				var filename:String = urlAdd.substring(urlAdd.lastIndexOf("/")+1,urlAdd.length);
+				//urlAdd = encodeURI(urlAdd);
+				downloadURL = new URLRequest(urlAdd);
+				try{
+					DownLoadfile = new FileReference();
+				} catch(e:Error){
+					MM.show(e.errorID+"A");
+				}
+				configureListeners(DownLoadfile);
+				DownLoadfile.download(downloadURL,filename);
+			}
+			private function configureListeners(dispatcher:IEventDispatcher):void {
+				dispatcher.addEventListener(Event.COMPLETE, completeHandler);
+				dispatcher.addEventListener(IOErrorEvent.IO_ERROR, errorShow);
+				
+			}
+			private function completeHandler(event:Event):void {
+				MM.show("文件下载成功");
+			}
+			private function errorShow(event:IOErrorEvent):void {
+				if(event.errorID == 2038){
+					MM.show("文件不存在");
+				} else{
+					MM.show(event.text);
+				}
+			}
+			private function selectAllItem():void{
+				if(recFileArray == null || recFileArray.length ==0){
+					return;
+				}
+				var check:Boolean = selectAll.selected;
+				if(check){
+					selectedCounts=recFileArray.length;
+				}else{
+					selectedCounts=0;
+				}
+				for(var i:int=0; i<recFileArray.length; i++){
+					var Obj:Object = recFileArray.getItemAt(i) as Object;
+					Obj.isSelected = check.toString();
+				}
+				
+				recFileArray.refresh(); //这个必须有，因为Obj.isSelected的值有变化，列表结果的dataProvider需要重新装载，即重新渲染
+			}
+			private var dellist:String="";
+			
+			
+			private function deleteSelect():void{
+				dellist ="";
+				var del_number:Number = 0;
+				for(var i:int=recFileArray.length-1;i>=0;i--)
+				{
+					if(recFileArray[i].isSelected=="true")
+					{
+						var audioFile_id:String = recFileArray[i].result_id;
+						
+						if(del_number==0)
+						{
+							
+							dellist = "'"+audioFile_id+"'";
+							
+							
+						} else{
+							dellist += ","+"'"+audioFile_id+"'";
+						}
+						del_number++;
+					}
+				}
+				if(dellist!=""){
+					MM.show("您确定删除吗?","删除确认",'',clickDeleteChoose,true,null,null);
+					//					Alert.show("您确定删除吗?","删除确认",Alert.YES | Alert.NO,this,clickDeleteChoose);
+				}
+				else{
+					MM.show("请选择要删除的信息","警告");
+					return;
+				}
+			}
+			//选择删除任务
+			private function clickDeleteChoose():void{
+				deletelist(dellist);
+				
+			}
+			private function deletelist(dellist:String):void{
+				selectAll.selected=false;
+				var obj:Object=new Object();
+				obj.dellist=dellist;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dataquery.audioquery.AudioFileQuery","deleteAudioFile",obj,_deletelist,DataManager.showErrorMessageBack));
+				
+			}
+			private function _deletelist(obj:Object):void{
+				recFileQuery();
+				MM.show("删除成功");
+			}
+			/**
+			 * 关闭页面时，关闭播放器
+			 */ 
+			protected function basepage1_PAGE_CLOSEHandler(event:Event):void
+			{
+				audioPlayer.player.stop();
+			}
+			
+			
+			private function reset():void{
+				this.type.selectedIndex=0;
+				headType.selectedIndex=0;
+				newHead.selectedIndex=0;
+				freq.text="";
+				programType.selectedIndex=0;
+				handle.selectedIndex=0;
+				station.selectedIndex=0;
+				language.selectedIndex=0;
+			}
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%">
+		<s:VGroup horizontalAlign="left" verticalAlign="middle" width="100%" height="100%" paddingLeft="5">	
+			<s:HGroup width="100%"  verticalAlign="middle" >
+				<s:VGroup width="65%" height="100%"  >	
+					<mx:HRule width="100%" strokeWidth="1" strokeColor="#a0a0a0" shadowColor="#000000" />
+					<s:HGroup width="100%"  verticalAlign="middle"  >
+						<s:Label text="录音类型"/>
+						<s:DropDownList id="type" dataProvider="{recType}"  selectedIndex="0" width="100" /> 
+						
+						<s:Label text="站点类别"/>
+						<s:DropDownList id="headType" dataProvider="{headTypes}" requireSelection="true" change="typeChange()" selectedIndex="0" width="80"/>
+						
+						<s:Label text="站点" />
+						<s:ComboBox id="newHead"  dataProvider="{headendArr}" labelField="shortname" width="110"/>
+						
+						<s:Label text="频率"/>	
+						<s:TextInput id="freq" textAlign="left" restrict="0-9" maxChars="6"  width="55"/>	
+						<s:Label text="节目类型："/>
+						<s:DropDownList id="programType" dataProvider="{programTypes}" selectedIndex="0" width="100"/>
+					</s:HGroup>
+					<mx:HRule width="100%" strokeWidth="1" strokeColor="#a0a0a0" shadowColor="#000000" />
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:RadioButton label="按时间段" groupName="timeCheckGroup" value="bytime" selected="true" click="timeCheck(event)" />
+						<s:RadioButton label="按日期" groupName="timeCheckGroup" value="byDate" click="timeCheck(event)"/>						
+						<s:Label text="起始时间" id="begintimelabel"/>
+						<timecomp:TimeNew id="startDatetime" starttime="00:00:00"/>
+						<timecomp:TimeNew id="day" dateDisplay="date" visible="false" includeInLayout="false"/>
+						<s:Label text="结束时间" id="endtimelabel"/>
+						<timecomp:TimeNew id="endDatetime" />
+					</s:HGroup>
+					<mx:HRule width="100%" strokeWidth="1" strokeColor="#a0a0a0" shadowColor="#000000" />
+					<s:HGroup width="100%" verticalAlign="middle" >
+						<s:Label text="是否处理"/>
+						<s:DropDownList id="handle" dataProvider="{handles}"  selectedIndex="0"/>
+						<s:Label text="发射台:"/>
+						<s:ComboBox id="station"  dataProvider="{stationArr}" labelField="name" width="100"/>
+						<s:Label text="语言"/>
+						<s:ComboBox id="language" dataProvider="{languageArr}" labelField="label" width="80"/>						
+						<s:Button label="查询"  id="_start" click="recFileQuery()" styleName="ButtonBlack"/>	
+						<s:Button label="删除" click="deleteSelect()"/>
+						<s:Button label="重置" click="reset()"/>
+					</s:HGroup>
+					<mx:HRule width="100%" strokeWidth="1" strokeColor="#a0a0a0" shadowColor="#000000" />
+				</s:VGroup>
+				<s:VGroup width="40%" height="100%">
+					<audioquery:AudioPlayer id="audioPlayer"  width="100%" height="100%"/>
+				</s:VGroup>
+			</s:HGroup>		
+			<s:HGroup width="100%" height="100%" verticalAlign="middle"  textAlign="center">
+				<s:VGroup width="100%" height="100%">
+					<mx:Canvas width="100%" height="100%">
+						<s:DataGrid id="result" x="0" y="0" width="100%" height="100%"
+									dataProvider="{recFileArray}">
+							<s:columns>
+								<s:ArrayCollection>
+									<s:GridColumn headerText="选择"		itemRenderer="{RendererUtil.getCheckBoxRenderer(changeSelect)}" width="50"/>
+									<s:GridColumn headerText="站点" 	visible="{headtype==1?true:false}"	dataField="head_name" width="80"/>
+									<!--s:GridColumn headerText="采集点" 	visible="{headtype==0?true:false}"	dataField="head_name" width="80"/-->
+									<s:GridColumn headerText="频率" 		dataField="frequency" width="60"/>
+									<s:GridColumn headerText="开始时间" 	dataField="start_datetime"/>
+									<s:GridColumn headerText="结束时间" 	dataField="end_datetime"/>
+									<s:GridColumn headerText="录音类型" 	dataField="report_type" labelFunction="reportFunction"/>
+									<s:GridColumn headerText="发射台"  	labelFunction="stationLabelFunc" width="110"/>
+									<s:GridColumn headerText="语言" 		labelFunction="programLabelFunc" width="110"/>
+									<s:GridColumn headerText="分数"  	labelFunction="markFunction"/>
+									<s:GridColumn headerText="打分" 		itemRenderer="{RendererUtil.getButtonRenderer('打分',mark)}"/>
+									<s:GridColumn headerText="播放"   	itemRenderer="{RendererUtil.getButtonRenderer('播放',play)}"/>
+									<s:GridColumn headerText="下载"   	itemRenderer="{RendererUtil.getButtonRenderer('下载',downloadRec)}"/>
+								</s:ArrayCollection>
+							</s:columns>
+						</s:DataGrid>
+						<s:Label text="正在查询，请稍候..." color="0x000000" id="clew_label" y="{result.columnHeaderGroup.height+10}" width="100%" textAlign="center"  visible="false" includeInLayout="false" />	
+					</mx:Canvas>
+				</s:VGroup>
+			</s:HGroup>
+			<s:HGroup  width="100%" height="30" verticalAlign="middle" gap="10">
+				<s:CheckBox id="selectAll" selected="false" change="selectAllItem()"/>
+				<s:Label text="全选"/> 			
+				<s:Label width="20"/>			
+				<!--分页组件所在地-->
+				<flipBar:PageBar  id="pagebar" rowConutOfPage="30" totalPageQuery="10" height="20"/>
+				<!--iframe:HTML  id="downloadHtml" source="com/viewscenes/utils/download/download.html"  visible="false" width="0" height="0"/-->
+			</s:HGroup> 
+		</s:VGroup>
+	</s:VGroup>	
+</system:BasePage>

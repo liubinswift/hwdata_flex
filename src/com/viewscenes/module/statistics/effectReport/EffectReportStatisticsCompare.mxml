@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" 
+		  xmlns:system="com.morcha4.frame.system.*"
+		  width="100%" height="100%" 
+		  xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+		  creationComplete="init();" xmlns:comp="com.viewscenes.global.comp.*" 
+		  xmlns:global="com.viewscenes.global.*" 
+		  xmlns:checkbox="com.viewscenes.global.comp.checkbox.*" 
+		  xmlns:contaners="com.morcha4.ui.contaners.*" 
+		  xmlns:chart="chart.*">
+	
+	
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+		<!-- 效果报告统计统计 -->
+	</fx:Declarations>
+	<system:layout>
+		<s:VerticalLayout/>
+	</system:layout>
+	<fx:Script>
+		<![CDATA[
+			import chart.FusionCharts;
+			
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.util.RendererUtil;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+			import com.viewscenes.utils.timecomp.DateUtil;
+			
+			import mx.collections.ArrayCollection;
+			import mx.core.UIComponent;
+			
+			[Bindable]
+			private var reportTypeData:ArrayCollection = new ArrayCollection([ 
+				{label:"国际台效果报告统计", data:"1003"},  
+				{label:"海外落地效果报告统计", data:"1004"} ]);
+			[Bindable]
+			private var resultDP:ArrayCollection = new ArrayCollection();
+//			
+			private function init():void{
+			}
+			
+			
+			
+			
+			protected function queryMethod(event:MouseEvent):void
+			{
+				resultDP.removeAll();
+				var starttime:String=this.beginDate.text;
+				var endtime:String=this.endDate.text;
+				if(starttime>endtime){
+					MM.show("开始时间不能晚于结束时间!!");
+					return;
+				}
+				clew_label.text = "正在查询请稍候...";
+				clew_label.visible = clew_label.includeInLayout = true;
+				var obj:Object = new Object();
+				obj.reprottype = reportType.selectedItem.data;
+				obj.starttime = beginDate.text + " 00:00:00";
+				obj.endtime = endDate.text + " 00:00:00";
+				var request:RORequestParam = new RORequestParam("com.viewscenes.web.statistics.effectReport.EffectReportStatistics","queryReportBeans",obj,queryMethodBack,DataManager.alertShowErrorMessageBack);
+				RPCManager.sendCmd(request);
+			}
+			private function queryMethodBack(arr:ArrayCollection):void{
+				if(arr.length==0){
+					clew_label.text = "无查询数据!";
+					clew_label.visible = clew_label.includeInLayout = true;
+				} else{
+					clew_label.visible = clew_label.includeInLayout = false;
+					resultDP = arr;
+				}
+			}
+			/**
+			 * 导出excel
+			 */
+			protected function exportMethod(event:MouseEvent):void
+			{
+				var num:int=0;
+				var reportIdNew:String = "";
+				var reportIdOld:String = "";
+				var rType:String = "";
+				for(var i:int=0;i<result.dataProvider.length;i++){
+					if(result.dataProvider[i].isSelected=="true"){
+						rType = result.dataProvider[i].report_type;
+						if(num == 0){
+							reportIdNew = result.dataProvider[i].report_id;
+						} else{
+							reportIdOld = result.dataProvider[i].report_id;
+						}
+						num++;
+					}
+				}
+				if(num != 2){
+					MM.show("请选择两条报表进行比较");
+					return;
+				}
+				var url:String="com.viewscenes.web.statistics.effectReport.EffectReportStatistics";
+				var func:String="doExcelCompare";
+				
+				var head:String = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r';
+				head += '<msg type="'+url+'" function="'+func+'">\r';
+				var xmlText:String = head;
+				
+				xmlText += "<reprottype>"+rType+"</reprottype>";//报表类型  1：国际台效果报告统计  2：海外落地效果报告统计
+				xmlText += "<reportIdOld>"+reportIdOld+"</reportIdOld>";
+				xmlText += "<reportIdNew>"+reportIdNew+"</reportIdNew>";
+				xmlText += "</msg>";
+				
+				flash.external.ExternalInterface.call("toExcel",xmlText);
+				
+			}
+			private function changeSelect(obj:Object):void{
+			}
+			private function labelFun(item:Object,gc:GridColumn):String{
+				if (item.report_type=="1003"){
+					return "国际台效果报告统计";
+				}else{
+					return "海外落地效果报告统计";
+				}
+				
+			}
+		]]>
+	</fx:Script>
+	
+	
+	<s:HGroup width="100%" verticalAlign="middle">
+		<s:Label text="开始日期"/>
+		<timecomp:TimeNew dateDisplay="date" id="beginDate"/>
+		<s:Label text="结束日期"/>
+		<timecomp:TimeNew dateDisplay="date" id="endDate"/>
+		<s:Label text="报表类型"/>
+		<s:DropDownList id="reportType" dataProvider="{reportTypeData}" requireSelection="true" width="170"/>
+		<s:Button label="查询" click="queryMethod(event)"/>
+		<s:Button label="导出" click="exportMethod(event)"/>
+	</s:HGroup>
+	<s:Group width="100%" height="100%">
+		<s:DataGrid width="100%" height="100%"  id="result"  textAlign="center"  dataProvider="{resultDP}">
+			<s:columns>
+				<s:ArrayCollection>
+					<s:GridColumn headerText="选择"  itemRenderer="{RendererUtil.getCheckBoxRenderer(changeSelect)}" width="100" />
+					<s:GridColumn dataField="report_id"  headerText="报表ID"/>
+					<s:GridColumn dataField="start_datetime"  headerText="开始时间" />
+					<s:GridColumn dataField="end_datetime"  headerText="结束时间" />
+					<s:GridColumn dataField="report_type"  headerText="报表类型"  labelFunction="labelFun"/>
+					<s:GridColumn dataField="import_user"  headerText="统计人" />
+					<s:GridColumn dataField="import_datetime"  headerText="统计时间"  />
+				</s:ArrayCollection>
+			</s:columns>
+		</s:DataGrid>
+		<s:Label text="正在查询，请稍候..." color="0x000000" id="clew_label" y="50" width="100%" textAlign="center"  visible="false" includeInLayout="false" />				
+	</s:Group>
+	
+</system:BasePage>

@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:VGroup xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" 
+		  xmlns:ns1="chart.*"
+		  xmlns:checkbox="com.viewscenes.global.comp.checkbox.*"
+		  width="100%" height="100%" alpha="1" creationComplete="init()">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCException;
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.frame.system.AdvancedEvent;
+			import com.morcha4.frame.system.EventBus;
+			import com.viewscenes.global.DataManager;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			
+			import spark.events.IndexChangeEvent;
+			[Bindable] 
+			public var info:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			private var HeadArr:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			private var unitArr:ArrayCollection = new ArrayCollection(['全部','00:00-00:30','00:30-01:00','01:00-01:30','01:30-02:00',
+				'02:00-02:30','02:30-03:00','03:00-03:30','03:30-04:00',
+				'04:00-04:30','04:30-05:00','05:00-05:30','05:30-06:00',
+				'06:00-06:30','06:30-07:00','07:00-07:30','07:30-08:00',
+				'08:00-08:30','08:30-09:00','09:00-09:30','09:30-10:00',
+				'10:00-10:30','10:30-11:00','11:00-11:30','11:30-12:00',
+				'12:00-12:30','12:30-13:00','13:00-13:30','13:30-14:00',
+				'14:00-14:30','14:30-15:00','15:00-15:30','15:30-16:00',
+				'16:00-16:30','16:30-17:00','17:00-17:30','17:30-18:00',
+				'18:00-18:30','18:30-19:00','19:00-19:30','19:30-20:00',
+				'20:00-20:30','20:30-21:00','21:00-21:30','21:30-22:00',
+				'22:00-22:30','22:30-23:00','23:00-23:30','23:30-24:00',]);
+			public var flag:String="";//统计类型
+			public var type:String=""; //运行图类型 1:国际台运行图  2:海外落地运行图
+			private var xml1:String="";
+			private var xml2:String="";
+			private var xml3:String="";
+			private function init():void{
+				queryHeadend();
+			}
+			/**
+			 * 查询站点信息
+			 * */
+			private function queryHeadend():void{
+				var obj:Object = new Object();
+				obj.type_id="all";
+				obj.state="all"; 
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.runplanManager.gjtRunplan.GJTRunplan","getHeadendList",obj,getHeadendListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getHeadendListBack(arr:ArrayCollection):void{
+				HeadArr=arr;
+			}
+			
+			protected function state_changeHandler():void
+			{
+				// TODO Auto-generated method stub
+				var obj:Object = new Object();
+				obj.type_id="all";
+				obj.state=state.selectedItem==null?'all':state.selectedItem.state; 
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.runplanManager.gjtRunplan.GJTRunplan","getHeadendList",obj,getHeadendListBack,DataManager.showErrorMessageBack));
+			}
+			public function staticInfoStation(runplan_type:String):void{
+				
+				var obj:Object = new Object();
+				obj.runplan_type=runplan_type;
+				obj.codes=website.getText("value");
+				obj.unit=unit.selectedItem;
+				var request:RORequestParam = new RORequestParam("com.viewscenes.web.runplanStatistics.RunplanStatisticsPic","statisticsInfoStation",obj,statisticsInfoBack,DataManager.showErrorMessageBack);
+				RPCManager.sendCmd(request);
+			}
+			public function staticInfoStationHours(runplan_type:String):void{
+				
+				var obj:Object = new Object();
+				obj.runplan_type=runplan_type;
+				obj.codes=website.getText("value");
+				obj.unit=unit.selectedItem;
+				var request:RORequestParam = new RORequestParam("com.viewscenes.web.runplanStatistics.RunplanStatisticsPic","statisticsInfoStationHours",obj,statisticsInfoBack,DataManager.showErrorMessageBack);
+				RPCManager.sendCmd(request);
+			}
+			
+			public function staticInfoRedisseminators(runplan_type:String):void{
+				
+				var obj:Object = new Object();
+				obj.runplan_type=runplan_type;
+				obj.codes=website.getText("value");
+				obj.unit=unit.selectedItem;
+				var request:RORequestParam = new RORequestParam("com.viewscenes.web.runplanStatistics.RunplanStatisticsPic","statisticsInfoRedisseminators",obj,statisticsInfoBack,DataManager.showErrorMessageBack);
+				RPCManager.sendCmd(request);
+			}
+			public function staticInfoRedisseminatorsHours(runplan_type:String):void{
+				
+				var obj:Object = new Object();
+				obj.runplan_type=runplan_type;
+				obj.codes=website.getText("value");
+				obj.unit=unit.selectedItem;
+				var request:RORequestParam = new RORequestParam("com.viewscenes.web.runplanStatistics.RunplanStatisticsPic","statisticsInfoRedisseminatorsHours",obj,statisticsInfoBack,DataManager.showErrorMessageBack);
+				RPCManager.sendCmd(request);
+			}
+			
+			public function staticInfoLanguage(runplan_type:String):void{
+				var obj:Object = new Object();
+				obj.runplan_type=runplan_type;
+				obj.codes=website.getText("value");
+				obj.unit=unit.selectedItem;
+				var request:RORequestParam = new RORequestParam("com.viewscenes.web.runplanStatistics.RunplanStatisticsPic","statisticsInfoLanguage",obj,statisticsInfoBack,DataManager.showErrorMessageBack);
+				RPCManager.sendCmd(request);
+			}
+			
+			public function staticInfoLanguageHours(runplan_type:String):void{
+				var obj:Object = new Object();
+				obj.runplan_type=runplan_type;
+				obj.codes=website.getText("value");
+				obj.unit=unit.selectedItem;
+				var request:RORequestParam = new RORequestParam("com.viewscenes.web.runplanStatistics.RunplanStatisticsPic","statisticsInfoLanguageHours",obj,statisticsInfoBack,DataManager.showErrorMessageBack);
+				RPCManager.sendCmd(request);
+			}
+			
+			private function statisticsInfoBack(res:Object):void{
+				if(res.xml1 == "无统计数据！"){
+					trip.text = res.xml1;
+					trip.visible = trip.includeInLayout = true;
+					fc1.visible = fc1.includeInLayout = false;
+					fc2.visible = fc2.includeInLayout = false;
+					fc3.visible = fc3.includeInLayout = false;
+				} else{
+					trip.visible = trip.includeInLayout = false;
+					fc1.visible = fc1.includeInLayout = true;
+					fc2.visible = fc2.includeInLayout = true;
+					fc3.visible = fc3.includeInLayout = true;
+					xml1=res.xml1;
+					xml2=res.xml2;
+					xml3=res.xml3;
+					setInfo();
+				}
+			}
+			/**
+			 * 图表所需参数
+			 * */
+			private function initial_param():XML
+				
+			{
+				var temp:String="<param><data formatNumberScale='0' animation='1' /></param>";
+				return XML(temp);
+			}
+			
+			private function setInfo():void{
+				
+				try{
+					fc1.FCDataXML=xml1;
+//					fc.FCData(info);
+//					fc.FCParams(initial_param());
+					fc1.FCRender();
+					fc2.FCDataXML=xml2;
+					fc2.FCRender();
+					fc3.FCDataXML=xml3;
+					fc3.FCRender();
+				}catch(e:Error){
+					DataManager.showErrorMessage(e.toString());
+				}
+			}
+			
+			private function statics():void{
+				info.removeAll();
+				if(flag=="station"){
+					if(freq.selected==true){
+					//show_label.text="发射台频率数统计";
+					  staticInfoStation(type);
+					}
+					if(hours.selected==true){
+					//  show_label.text="发射台频时数统计";
+					  staticInfoStationHours(type);
+					}
+					
+				}
+				if(flag=="language"){
+					if(freq.selected==true){
+					//	show_label.text="语言频率数统计";
+						staticInfoLanguage(type);
+					}
+					if(hours.selected==true){
+					//	show_label.text="语言频时数统计";
+						staticInfoLanguageHours(type);
+					}
+					
+				   
+				}
+				
+				if(flag=="redisseminators"){
+					if(freq.selected==true){
+						//	show_label.text="语言频率数统计";
+						staticInfoRedisseminators(type);
+					}
+					if(hours.selected==true){
+						//	show_label.text="语言频时数统计";
+						staticInfoRedisseminatorsHours(type);
+					}
+				}
+			}
+			public function show():void{
+				this.visible = this.includeInLayout = true;
+			}
+			private function goBack():void{
+				freq.selected=true;
+				this.visible=false;
+				this.includeInLayout=false;
+				EventBus.dispatchEvent(new AdvancedEvent("showVG",false,false,null));
+			}
+			
+			private function click():void{
+				if(freq.selected==true){
+					
+				}
+				if(hours.selected==true){
+					
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<s:HGroup height="20" width="100%" alpha="1"  verticalAlign="middle" paddingTop="10" horizontalAlign="center">
+		<s:Label text="大洲"/>
+		<s:DropDownList id="state" dataProvider="{DataManager.satateBeanArrAll}" labelField="state_name" change="state_changeHandler()"/>
+		<s:Label text="收测站点"/>
+		<checkbox:CheckDropList id="website" width="150" dataProvider="{HeadArr}" filedLabel="label"/>
+		<s:Label text="时段"/>
+		<s:DropDownList id="unit" dataProvider="{unitArr}" selectedIndex="0" width="150" labelField="value"/>
+		<s:RadioButton id="freq" label="频率数统计" selected="true" click="click()"/>
+		<s:RadioButton id="hours" label="频时数统计" click="click()"/>
+		<s:Button label="统计" click="statics()"/>
+		<s:Button label="返回" click="goBack()"/>
+	</s:HGroup>
+	<mx:HRule width="100%" strokeWidth="1" strokeColor="#a0a0a0" shadowColor="#000000" />
+	<s:VGroup width="100%" height="100%" horizontalAlign="center" id="mygroup">
+		<s:Label id="trip" />
+		<ns1:FusionCharts id="fc1" width="1500" height="290" y="30" x="0"  FCFolder="fusioncharts" FCChartType="Column3D">
+		</ns1:FusionCharts>
+		<ns1:FusionCharts id="fc2" width="1500" height="290" y="30"  x="290"  FCFolder="fusioncharts" FCChartType="Column3D">
+		</ns1:FusionCharts>
+		<ns1:FusionCharts id="fc3" width="1500" height="290" y="30" x="580"  FCFolder="fusioncharts" FCChartType="Column3D">
+		</ns1:FusionCharts>
+	</s:VGroup>
+</s:VGroup>

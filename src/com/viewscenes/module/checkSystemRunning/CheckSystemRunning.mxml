@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 xmlns:system="com.morcha4.frame.system.*"
+				 width="100%" height="100%" 
+				 xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+				 xmlns:global="com.viewscenes.global.*" 
+				 xmlns:flipBar="com.viewscenes.utils.flipBar.*"
+				 creationComplete="init()"
+				 >
+	
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.viewscenes.global.DataManager;
+			protected function init():void
+			{
+				this.button1_clickHandler();
+		  }
+			protected function button1_clickHandler():void
+			{
+				this.check.enabled=false;
+				// TODO Auto-generated method stub
+				var obj:Object=new Object();
+				
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","checkSystemRunning",obj,checkSystemRunningReturn,DataManager.showErrorMessageBack));
+				
+			}
+			protected function checkSystemRunningReturn(str:String):void
+			{
+			var lists:Array=  str.split("&&");
+			for(var i=0;i<lists.length;i++)
+			{
+				var ips:Array=  lists[i].split(",");
+				var label:String=ips[0];
+				var trueOrfalse:String=ips[1];
+				if(label=="数据库服务器")
+				{
+				   if(trueOrfalse=="0")
+				   {
+					   apptobase.source="com/viewscenes/images/module/checkSystemRunning/leftred.png" 
+				   }else
+				   {
+					   apptobase.source="com/viewscenes/images/module/checkSystemRunning/leftgreen.png" 
+					      
+				   }
+				}else if(label=="录音播放服务器")
+				{
+					if(trueOrfalse=="0")
+					{
+					apptoplayservices.source="com/viewscenes/images/module/checkSystemRunning/rightred.png" 
+				
+					}else
+					{
+						apptoplayservices.source="com/viewscenes/images/module/checkSystemRunning/rightgreen.png" 
+							
+					}
+				}
+			}
+			this.check.enabled=true;
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	
+	<s:VGroup  width="100%" height="100%" verticalAlign="middle" horizontalAlign="center" >
+		<s:HGroup horizontalAlign="center"  paddingBottom="30">
+			<s:Button buttonMode="true" id="check" label="查看网络即时状态" click="button1_clickHandler()"></s:Button>
+
+		</s:HGroup>
+		<s:HGroup width="100%"   horizontalAlign="center"  verticalAlign="middle" paddingLeft="10">
+			<s:VGroup>
+		
+			<s:Image id="database" source="com/viewscenes/images/module/checkSystemRunning/topuEnd1.png"/>
+			<s:Label text="数据库服务器">	</s:Label>	
+			</s:VGroup>
+			<s:Image id="apptobase" source="com/viewscenes/images/module/checkSystemRunning/leftgreen.png"/>
+			<s:VGroup>
+			<s:Image id="app" source="com/viewscenes/images/module/checkSystemRunning/topuEnd1.png"/>
+			<s:Label text="应用服务器">	</s:Label>	
+	        </s:VGroup>
+			<s:Image id="apptoplayservices" source="com/viewscenes/images/module/checkSystemRunning/rightgreen.png"/>
+			<s:VGroup>
+			<s:Image id="playservices" source="com/viewscenes/images/module/checkSystemRunning/topuEnd1.png"/>
+				<s:Label text="录音播放服务器">	</s:Label>	
+			</s:VGroup>
+		</s:HGroup>
+		
+			<s:HGroup horizontalAlign="center" paddingTop="50">
+				<s:Label  color="#ff0000" text="提示:红色箭头表示通信故障,绿色表示通信正常.">
+					
+				</s:Label>
+			</s:HGroup>
+	</s:VGroup>
+</system:BasePage>

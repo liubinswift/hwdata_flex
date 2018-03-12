@@ -1,0 +1,426 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 xmlns:system="com.morcha4.frame.system.*" 
+				 xmlns:flipBar="com.viewscenes.utils.flipBar.*"
+				 xmlns:tools="com.viewscenes.utils.tools.*"
+				 width="100%" height="100%" creationComplete="init()"
+				 PAGE_SHOW="reset()" xmlns:editor="com.morcha4.editor.*">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCException;
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.editor.ComboBoxEditor;
+			import com.morcha4.editor.EditorManager;
+			import com.morcha4.util.RendererUtil;
+			import com.viewscenes.beans.dicManager.AzimuthBean;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+			import com.viewscenes.utils.StringTool;
+			
+			import flash.net.FileReference;
+			
+			import mx.collections.ArrayList;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import mx.core.FlexGlobals;
+			import mx.events.DataGridEvent;
+			
+			import spark.events.GridEvent;
+			import spark.events.GridItemEditorEvent;
+			[Bindable]
+			private var azimuthArr:ArrayCollection = new ArrayCollection();
+			//发射台
+			[Bindable]
+			private var stationArr:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			private var stationList:ArrayCollection=new ArrayCollection();
+			//城市 
+			[Bindable]
+			private var cityArr:ArrayCollection = new ArrayCollection();
+			[Bindable] 
+			private var cityList:ArrayCollection=new ArrayCollection();
+			[Bindable]
+			private var addArr:ArrayCollection = new ArrayCollection();//临时存放新增的方位角信息
+			[Bindable]
+			private var updateArr:ArrayCollection = new ArrayCollection();//临时存放修改的方位角信息
+			[Bindable]private var selectedCounts:int = 0;  //选择总数
+			
+			private var file:FileReference = new FileReference();//导入对象
+			private var fileRe:FileReference = new FileReference();//上传对象
+			private function init():void{
+				queryStation();
+				queryCity();
+				file.addEventListener(Event.SELECT,clickBrowser);
+			}
+			private function reset():void{
+				queryStation();
+				queryCity();
+			}
+			/**
+			 * 查询发射台信息
+			 * */
+			private function queryStation():void{
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getStationList",null,getStationListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getStationListBack(arr:ArrayCollection):void{
+				stationArr.removeAll();
+				stationArr = arr;
+				stationList.removeAll();
+				for(var i:int;i<arr.length;i++){
+					var obj:Object=new Object();
+					obj.station_name=arr[i].name;
+					stationList.addItem(obj);					
+				}
+				stationArr.addItemAt({name:"全部",id:""},0);
+				station.selectedIndex = 0;
+			}
+			
+			/**
+			 * 查询发射城市信息
+			 * */
+			private function queryCity():void{
+				var obj:Object = new Object();
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.sysmgr.dicManager.CityTab","getCityByCountry",obj,getCityListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getCityListBack(arr:ArrayCollection):void{
+				cityArr.removeAll();
+				cityList.removeAll();
+				for(var i:int=0;i<arr.length;i++){
+					var obj:Object=new Object();
+					obj.city_name=arr[i].city;
+					cityList.addItem(obj);
+				}
+				cityArr=arr;
+				cityArr.addItemAt({city:"全部",id:""},0);
+				city.selectedIndex = 0;
+			}
+			
+			private function queryAzimuth():void{
+				selectedCounts=0;
+				btn1.label="全选";
+				azimuthArr.removeAll();
+				clew_label.visible=true;
+				clew_label.includeInLayout=true;
+				clew_label.text="正在查询，请稍候...";
+				var bean:AzimuthBean=new AzimuthBean();
+				if(station.selectedItem.name!="全部"){
+					bean.station_name=station.selectedItem.name;
+				}
+				if(city.selectedItem.city!="全部"){
+					bean.city_name=city.selectedItem.city;
+				}
+				var request:RORequestParam =new RORequestParam("com.viewscenes.web.dicManager.AzimuthManager","queryAzimuth",bean,queryAzimuthBack,DataManager.showErrorMessageBack);
+				pagebar.m_sendCmd(request);
+			}
+			
+			private function queryAzimuthBack(arr:ArrayCollection):void{
+				if(arr.length==0){
+					clew_label.text="无相关查询数据";
+				}else{
+					clew_label.visible=false;
+					clew_label.includeInLayout=false;
+					azimuthArr=arr;
+				}
+			}
+			/**
+			 * 在页面添加一行数据
+			 * */
+			private function addAzimuth():void{
+				clew_label.visible=false;
+				clew_label.includeInLayout=false;
+				var obj:Object = new Object();
+				obj.id="";
+				obj.station_name="";
+				obj.city_name="";
+				obj.circle_distance="";
+				obj.azimuth="";
+				obj.longitude="";
+				obj.latitude
+				azimuthArr.addItemAt(obj,0);
+				
+			}
+			
+			/**
+			 * 保存添加或者修改的数据
+			 * */
+			private function updateAzimuth():void{
+				btn1.label="全选";
+				var obj:Object = new Object();
+				addArr.removeAll();
+				updateArr.removeAll();
+				for(var i:int=0;i<azimuthArr.length;i++){
+					if(azimuthArr.getItemAt(i).isSelected=="true"){
+						var bean:AzimuthBean = new AzimuthBean();
+						if(azimuthArr.getItemAt(i).id==""){//新添加的数据
+							bean.station_name=azimuthArr.getItemAt(i).station_name;
+							bean.city_name = azimuthArr.getItemAt(i).city_name;
+							bean.circle_distance = azimuthArr.getItemAt(i).circle_distance;
+							bean.azimuth = azimuthArr.getItemAt(i).azimuth;
+							bean.longitude = azimuthArr.getItemAt(i).longitude;
+							bean.latitude = azimuthArr.getItemAt(i).latitude;
+							if(validPsw(bean)){
+								return ;
+							}
+							addArr.addItem(bean);
+						}else{//修改原来的数据
+							bean.id = azimuthArr.getItemAt(i).id;
+							bean.station_name=azimuthArr.getItemAt(i).station_name;
+							bean.city_name = azimuthArr.getItemAt(i).city_name;
+							bean.circle_distance = azimuthArr.getItemAt(i).circle_distance;
+							bean.azimuth = azimuthArr.getItemAt(i).azimuth;
+							bean.longitude = azimuthArr.getItemAt(i).longitude;
+							bean.latitude = azimuthArr.getItemAt(i).latitude;
+							if(validPsw(bean)){
+								return ;
+							}
+							updateArr.addItem(bean);
+						}
+					}
+				}
+				if(addArr.length==0&&updateArr.length==0){
+					DataManager.showErrorMessage("没有需要保存修改的数据项!");
+					return;
+				}
+				
+				obj.add=addArr;
+				obj.update=updateArr;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dicManager.AzimuthManager","updateAzimuth",obj,updateAzimuthBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function updateAzimuthBack(res:String):void{
+				if(res.indexOf('成功')>=0){
+					DataManager.showErrorMessage(res);					
+					queryAzimuth();
+				}else{
+					DataManager.showErrorMessage(res);
+				}
+				
+			}
+			private function  validPsw(bean:AzimuthBean):Boolean{
+				var regex:RegExp =/^(-?\d+)(\.\d+)?$/;
+				if(bean.station_name==""||bean.station_name.length==0){
+					MM.show("发射台不能为空");
+					return true;
+				}
+				if(bean.city_name==""||bean.city_name.length==0){
+					MM.show("城市不能为空");
+					return true;
+				}
+				if(bean.circle_distance!=""&&!regex.test(bean.circle_distance)){
+					MM.show("大圆距离输入格式不正确,只能输入数字");
+					return true;
+				}
+				if(bean.azimuth!=""&&!regex.test(bean.azimuth)){
+					MM.show("方位角输入格式不正确,只能输入数字");
+					return true;
+				}
+				if(bean.longitude!=""&&!regex.test(bean.longitude)){
+					MM.show("经度输入格式不正确,只能输入数字");
+					return true;
+				}	
+				if(bean.latitude==null){
+					bean.latitude="";
+				}else if(bean.latitude!=""&&!regex.test(bean.latitude)){
+					MM.show("纬度输入格式不正确,只能输入数字");
+					return true;
+				}
+				return false;
+			}
+			/**
+			 * 删除方位角信息
+			 * */
+			var ids:String="";
+			private function delAzimuth():void{
+				ids="";
+				var flag:Boolean=true;
+				for(var i:int=0;i<azimuthArr.length;i++){
+					if(azimuthArr.getItemAt(i).isSelected=="true"){
+						flag=false;
+						if(azimuthArr.getItemAt(i).id!=""){
+							ids+="'"+azimuthArr.getItemAt(i).id+"',";
+						}
+						
+					}
+				}
+				if(flag){
+					DataManager.showErrorMessage("请选择要删除的项!");
+				}else{
+					if(ids!=""){
+						MM.show("您确定要删除吗?","删除方位角",'',confirmDel,true,cancelHandler,null);
+					}else{
+						MM.show("删除方位角信息成功!","","",queryAzimuth);
+					}
+				}
+			}
+			/**
+			 * 取消回调方法
+			 * */
+			private function cancelHandler():void{
+				ids="";
+			}
+			
+			private function confirmDel():void{
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dicManager.AzimuthManager","delAzimuth",ids.substr(0,ids.length-1),delAzimuthBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function delAzimuthBack(res:String):void{
+				ids="";
+				DataManager.showErrorMessage(res);
+				queryAzimuth();
+			}
+			
+			/**
+			 * 全选操作
+			 * */
+			private var selectState:String =" false";// 记录选中的状态
+			
+			private function selectAll():void{
+				if(btn1.label=="全选"){
+					btn1.label="取消全选";
+					selectState="true";
+					selectedCounts=azimuthArr.length;
+				}else{
+					btn1.label="全选";
+					selectState="false";
+					selectedCounts=0;
+				}
+				for(var i:int=0;i<azimuthArr.length;i++){
+					var obj:Object = azimuthArr.getItemAt(i) as Object;
+					obj.isSelected=selectState;
+				}
+				azimuthArr.refresh();
+				
+			}
+			//选择点中后执行的方法
+			private function changeSelect(obj:Object):void{
+				btn1.label="全选";				
+				if(obj.data.isSelected=="true"){
+					this.selectedCounts=selectedCounts+1;  
+				}else{
+					this.selectedCounts=selectedCounts-1; 
+				}
+				if(selectedCounts==azimuthArr.length){
+					btn1.label="取消全选";	
+				}
+			}
+			/**
+			 * 方位角信息文件上传
+			 * */
+			private function submit():void{
+				//上传完成之后执行的事件   
+				fileRe.addEventListener(Event.SELECT,selectHandler);
+				fileRe.addEventListener(Event.COMPLETE,processResult);
+				fileRe.browse();
+			}
+			
+			private function selectHandler(event:Event):void{
+				//根据URL执行文件上传，请求到后台Java的Servlet
+				var sysurl:String = FlexGlobals.topLevelApplication.url;
+				var index:int = sysurl.lastIndexOf("/");
+				var url:String = sysurl.substring(0,index);
+				var urlStr:String=url+"/uploadservlet";
+				var r:URLRequest=new URLRequest(urlStr);
+				fileRe.upload(r);//第二个参数指定文件域的名字，默认为Filedata       
+				//提交三个参数Filename,Filedata,Upload                
+			}
+			
+			private function processResult(event:Event):void{
+				MM.show("上传文件成功,可以导入文件了！");
+			}
+			
+			private function importExcel():void{
+				file.browse();
+			}
+			
+			private function clickBrowser(event:Event):void{
+				var obj:Object = new Object();
+				obj.input_person = DataManager.user.userName;
+				obj.runplan_type_id="1";
+				obj.file_name=file.name;
+				//				var gjtbean:GJTRunplanBean = new GJTRunplanBean();
+				//				gjtbean.input_person = DataManager.user.userName;
+				//				gjtbean.runplan_type_id="1";
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dicManager.AzimuthManager","importExcel",obj,importExcelBack,DataManager.showErrorMessageBack));
+			}
+			private function importExcelBack(res:String):void{
+				DataManager.showErrorMessage(res);
+				queryAzimuth();
+			}
+			/**
+			 * 点击datagrid某行数据触发的方法
+			 * */
+			private function onGridClick(event:GridEvent):void{
+				if(grid.dataProvider.length<=0){
+					return;
+				}else{
+					if(event.columnIndex==0||event.item==null){
+						return;
+					}else{
+						switch(grid.columns[event.columnIndex].dataField){
+							case "station_name":{
+								ComboBoxEditor.dataProvider=stationList;
+								
+								break;
+							} 
+							case "city_name":
+							{
+								
+								ComboBoxEditor.dataProvider=cityList;;
+								
+							}
+						}				
+					}
+					
+				}
+				
+			}
+			
+			
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%"  horizontalAlign="center" verticalAlign="middle">
+		<s:HGroup width="100%" height="25" verticalAlign="middle"  horizontalAlign="center" >
+			<s:HGroup width="50%" horizontalAlign="left"  verticalAlign="middle">
+				<s:Label text="发射台:"/>
+				<s:ComboBox id="station" width="100" dataProvider="{stationArr}" labelField="name"/>
+				<s:Label text="城市:"/>
+				<s:ComboBox id="city" width="100" dataProvider="{cityArr}" labelField="city"/>
+			</s:HGroup>
+			<s:HGroup width="50%" horizontalAlign="right">
+				<s:Button buttonMode="true" label="上传" click="submit()"/>
+				<s:Button buttonMode="true" label="导入" click="importExcel()"/>
+				<s:Button buttonMode="true" label="查询" click="queryAzimuth()"/>
+				<s:Button buttonMode="true" label="增加" click="addAzimuth()"/>
+				<s:Button buttonMode="true" label="保存修改" click="updateAzimuth()"/>
+				<s:Button buttonMode="true" label="全选" id="btn1" click="selectAll()"/>
+				<s:Button buttonMode="true" label="删除" click="delAzimuth()"/>
+			</s:HGroup>			
+		</s:HGroup>
+		<mx:Canvas  width="100%" height="100%">
+			<s:DataGrid width="100%" height="100%" editable="true"  id="grid" textAlign="center" dataProvider="{azimuthArr}"
+						gridClick="onGridClick(event)">
+				<s:columns>
+					<s:ArrayCollection>
+						<s:GridColumn headerText="选择" width="60" editable="false" itemRenderer="{RendererUtil.getCheckBoxRenderer(changeSelect)}" />
+						<s:GridColumn dataField="station_name"  headerText="发射台" itemEditor="com.morcha4.editor.ComboBoxEditor"/>							
+						<s:GridColumn dataField="city_name"  headerText="城市" itemEditor="com.morcha4.editor.ComboBoxEditor" />
+						<s:GridColumn dataField="circle_distance"  headerText="大圆距离" />
+						<s:GridColumn dataField="azimuth"  headerText="方位角" />
+						<s:GridColumn dataField="longitude"  headerText="经度" />
+						<s:GridColumn dataField="latitude"  headerText="纬度" />
+					</s:ArrayCollection>
+				</s:columns>
+			</s:DataGrid>
+			<s:Label text="正在查询，请稍候..." id="clew_label" y="{grid.columnHeaderGroup.height+10}" color="0x000000" fontSize="15" width="100%" textAlign="center"  visible="false" includeInLayout="false" />
+		</mx:Canvas>	
+		<flipBar:PageBar width="100%" id="pagebar" rowConutOfPage="40" totalPageQuery="5" height="20"/>
+
+	</s:VGroup>
+</system:BasePage>

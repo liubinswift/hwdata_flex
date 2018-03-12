@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" close="close(event);"
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="400" height="500"
+			   creationComplete="init();" 
+			   xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+			   xmlns:ip="com.viewscenes.utils.tools.*"
+			   xmlns:global="com.viewscenes.global.*"
+			   xmlns:checkbox="com.viewscenes.global.comp.checkbox.*"
+			   mouseDown="startDrag()"
+			   title="选择设备维护录音文件"
+			  
+			   mouseUp="stopDrag();" xmlns:flipBar="com.viewscenes.utils.flipBar.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.util.RendererUtil;
+			import com.viewscenes.global.DataManager;
+			
+			import mx.managers.PopUpManager;
+			[Bindable]
+			private var pathArr:ArrayCollection=new ArrayCollection();
+			[Bindable]
+			public var parenter:Object=null;
+			[Bindable]
+			private var recordPath:String="";
+			private function init():void{
+				query();
+			}
+			private function query():void{
+				var obj:Object=new Object();
+				obj.record=record.text;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.devicemgr.equmaintain.EquMaintain","queryEquPath",obj,_query,DataManager.showErrorMessageBack));
+			}
+			private function _query(arr:ArrayCollection):void{
+				if(arr.length==0){					
+					obj = new Object();
+					obj.resultList = new ArrayCollection();
+					obj.resultTotal = 0;
+					pagebar.m_queryProcess(obj,showBackDetailMethod);
+					return;
+				}else{
+					var obj:Object=new Object();
+					obj.resultList=arr;
+					obj.resultTotal=obj.resultList.length
+					pagebar.m_queryProcess(obj,showBackDetailMethod);
+				}
+			}
+			private function showBackDetailMethod(obj:ArrayCollection):void{				
+				clew_label.visible=false;
+				clew_label.includeInLayout=false;
+				pathArr.removeAll();
+				if(obj.length==0){
+					clew_label.text="无查询数据！";
+					clew_label.visible=true;
+					clew_label.includeInLayout=true;					
+				}else{					
+					pathArr=obj ;
+				}								
+			}
+			private function changeSelect(obj:Object):void{
+				if(obj.data.isSelected=="true"){
+					for(var i:int=0; i<pathArr.length; i++){
+						var Obj:Object = pathArr.getItemAt(i) as Object;
+						Obj.isSelected = "false";
+					}
+					obj.data.isSelected="true";
+					pathArr.refresh();
+					recordPath=obj.data.record_name;
+				}
+			}
+			private function choose():void{
+				if(recordPath!=""&&recordPath.length!=0){
+					parenter.setRecordPath(recordPath);
+				}
+				close(null);
+			}
+			private function close(event:Event):void{
+				PopUpManager.removePopUp(this);
+			}
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%" >
+		<s:Spacer width="100%" height="10"/>
+		<s:HGroup width="100%" horizontalAlign="center" >		
+			<s:Label text="录音文件："/>
+			<s:TextInput id="record"  width="100"/>
+			<s:Button label="查询" click="query()"/>
+			<s:Button label="确定" click="choose()" />
+		</s:HGroup>
+		<mx:Canvas  width="100%" height="100%">
+			<s:DataGrid width="100%" height="100%" id="grid" textAlign="center" dataProvider="{pathArr}">
+				<s:columns>
+					<s:ArrayCollection>
+						<s:GridColumn headerText="选择" width="60" editable="false" itemRenderer="{RendererUtil.getCheckBoxRenderer(changeSelect)}" />
+						<s:GridColumn dataField="record_name" headerText="文件名" />					
+					</s:ArrayCollection>
+				</s:columns>
+			</s:DataGrid>
+			<s:Label text="正在查询，请稍候..." id="clew_label" y="{grid.columnHeaderGroup.height+10}" color="0x000000" fontSize="15" width="100%" textAlign="center"  visible="false" includeInLayout="false" />
+		</mx:Canvas>
+		<flipBar:PageBar width="100%" id="pagebar" rowConutOfPage="40" totalPageQuery="5" height="20" color="0x000000"/>
+	</s:VGroup>
+</s:TitleWindow>

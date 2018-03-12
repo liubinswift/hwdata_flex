@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+				 xmlns:flipBar="com.viewscenes.utils.flipBar.*"
+				 xmlns:tools="com.viewscenes.utils.tools.*"
+				 xmlns:system="com.morcha4.frame.system.*" 
+				 xmlns:checkbox="com.viewscenes.global.comp.checkbox.*"
+				 width="100%" height="100%" creationComplete="init()">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCException;
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.util.RendererUtil;
+			import com.viewscenes.beans.freqtimetab.HWLDFreqBean;
+			import com.viewscenes.global.DataManager;
+			[Bindable] 
+			private var info:ArrayCollection = new ArrayCollection();
+			//发射台
+			[Bindable]
+			private var stationArr:ArrayCollection = new ArrayCollection();
+			//语言
+			[Bindable]
+			private var lanaguageArr:ArrayCollection = new ArrayCollection();
+			
+			[Bindable]
+			public var selectedCounts:int =0;
+			[Bindable]
+			private var HeadArr:ArrayCollection = new ArrayCollection();
+			private function init():void{
+				//queryStation();
+				getLanguageList();
+				queryHeadend();
+			}
+			/**
+			 * 查询站点信息
+			 * */
+			private function queryHeadend():void{
+				var obj:Object = new Object();
+				obj.type_id="all";
+				obj.state="all"; 
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.runplanManager.gjtRunplan.GJTRunplan","getHeadendList",obj,getHeadendListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getHeadendListBack(arr:ArrayCollection):void{
+				HeadArr=arr;
+			}
+//			/**
+//			 * 查询发射台信息
+//			 * */
+//			private function queryStation():void{
+//				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getStationList",null,getStationListBack,DataManager.showErrorMessageBack));
+//			}
+//			
+//			private function getStationListBack(arr:ArrayCollection):void{
+//				stationArr.removeAll();
+//				stationArr = arr;
+//				stationArr.addItemAt({station_name:"全部",id:""},0);
+//				station.selectedIndex = 0;
+//			}
+			
+			/**
+			 * 
+			 * 语言
+			 * */
+			private function getLanguageList():void{
+				var obj:Object = new Object;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getLanguageList",obj,getLanguageListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getLanguageListBack(arr:ArrayCollection):void{
+				lanaguageArr.removeAll();
+				lanaguageArr = arr;
+				lanaguageArr.addItemAt({language_name:"全部",language_id:""},0);
+				language.selectedIndex = 0;
+			}
+			
+			private function staticInfo():void{
+				info.removeAll();
+				clew_label.visible=true;
+				clew_label.includeInLayout=true;
+				clew_label.text="正在生成,请稍候......";
+				var bean:HWLDFreqBean = new HWLDFreqBean();
+				if(language.selectedItem.language_name!="全部"){
+					bean.language = language.selectedItem.language_name;
+					bean.language_id = language.selectedItem.language_id;
+				}
+				if(seasonType.selectedItem!=null){
+					bean.seasonType = seasonType.selectedItem.label;
+				}
+				bean.freq = freq.text;
+				bean.mon_area = mon_area.getText("value");
+				var request:RORequestParam = new RORequestParam("com.viewscenes.web.freqtimetab.HWLDFreq","statisticsInfo",bean,statisticsInfoBack,DataManager.showErrorMessageBack);
+				RPCManager.sendCmd(request);
+			}
+			
+			private function statisticsInfoBack(res:String):void{
+				if(res.indexOf("成功")>=0){
+					getInfo();
+				}else{
+					clew_label.visible=true;
+					clew_label.includeInLayout=true;
+					clew_label.text=res;
+				}
+			}
+			
+			private function getInfo():void{
+				clew_label.visible=true;
+				clew_label.includeInLayout=true;
+				info.removeAll();
+				var bean:HWLDFreqBean = new HWLDFreqBean();
+				if(language.selectedItem.language_name!="全部"){
+					bean.language = language.selectedItem.language_name;
+					bean.language_id = language.selectedItem.language_id
+				}
+				bean.freq = freq.text;
+				bean.mon_area = mon_area.getText("value");
+				var request:RORequestParam = new RORequestParam("com.viewscenes.web.freqtimetab.HWLDFreq","getInfo",bean,getInfoBack,DataManager.showErrorMessageBack);
+				pagebar.m_sendCmd(request);
+			}
+			
+			private function getInfoBack(arr:ArrayCollection){
+				if(arr.length>0){
+					clew_label.visible=false;
+					clew_label.includeInLayout=false;
+					info=arr;
+				}else{
+					
+					clew_label.text="没有相关统计数据";
+				}
+			}
+			private function doExcel():void{
+				var url:String="com.viewscenes.web.freqtimetab.HWLDFreq";
+				var func:String="doExcel";
+				
+				var head:String = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r';
+				head += '<msg type="'+url+'" function="'+func+'">\r';
+				var xmlText:String = head;
+				if(language.selectedItem.language_name!="全部"){
+					xmlText += "<language>"+language.selectedItem.language_name+"</language>";
+				}
+				xmlText += "<freq>"+freq.text+"</freq>";
+				if(seasonType.selectedItem!=null){
+					xmlText +="<seasonType>"+seasonType.selectedItem.label+"</seasonType>";
+				}else{
+					xmlText +="<seasonType></seasonType>";
+				}
+				xmlText +="<website>"+mon_area.getText("value")+"</website>";
+				xmlText += "</msg>";
+				
+				flash.external.ExternalInterface.call("toExcel",xmlText);
+			}
+			/**
+			 * 另外一种导出格式，按转播机构生成Excel
+			 * */
+			private function doExcel1():void{
+				var url:String="com.viewscenes.web.freqtimetab.HWLDFreq";
+				var func:String="doExcel1";
+				
+				var head:String = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r';
+				head += '<msg type="'+url+'" function="'+func+'">\r';
+				var xmlText:String = head;
+				if(language.selectedItem.language_name!="全部"){
+					xmlText += "<language>"+language.selectedItem.language_id+"</language>";
+				}
+				if(seasonType.selectedItem!=null){
+					xmlText +="<seasonType>"+seasonType.selectedItem.label+"</seasonType>";
+				}else{
+					xmlText +="<seasonType></seasonType>";
+				}
+				xmlText += "<freq>"+freq.text+"</freq>";
+				xmlText +="<website>"+mon_area.getText("value")+"</website>";
+				xmlText += "</msg>";
+				
+				flash.external.ExternalInterface.call("toExcel",xmlText);
+			}
+			
+			/**
+			 * 另外一种导出格式，按语言生成Excel
+			 * */
+			private function doExcel2():void{
+				var url:String="com.viewscenes.web.freqtimetab.HWLDFreq";
+				var func:String="doExcel2";
+				
+				var head:String = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r';
+				head += '<msg type="'+url+'" function="'+func+'">\r';
+				var xmlText:String = head;
+				if(language.selectedItem.language_name!="全部"){
+					xmlText += "<language>"+language.selectedItem.language_id+"</language>";
+				}
+				if(seasonType.selectedItem!=null){
+					xmlText +="<seasonType>"+seasonType.selectedItem.label+"</seasonType>";
+				}else{
+					xmlText +="<seasonType></seasonType>";
+				}
+				xmlText += "<freq>"+freq.text+"</freq>";
+				xmlText +="<website>"+mon_area.getText("value")+"</website>";
+				xmlText += "</msg>";
+				
+				flash.external.ExternalInterface.call("toExcel",xmlText);
+			}
+			//选择点中后执行的方法
+			private function changeSelect(obj:Object):void{
+				if(obj.data.isSelected=="true"){
+					this.selectedCounts=selectedCounts+1;  
+				}else{
+					this.selectedCounts=selectedCounts-1; 
+				}
+			}
+			
+			
+			
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%" paddingTop="10" horizontalAlign="center" verticalAlign="middle">
+		<s:HGroup width="100%" height="20" verticalAlign="middle" horizontalAlign="center">
+			<!--s:Label text="发射台"/>
+			<s:DropDownList id="station" width="100" dataProvider="{stationArr}" labelField="station_name"/-->
+			<s:Label text="语    言"/>
+			<s:DropDownList id="language" dataProvider="{lanaguageArr}" labelField="language_name" width="100"/>
+			<s:Label text="频率"/>
+			<s:TextInput id="freq" width="70" restrict="0-9"/>
+			<s:Label text="收测站点"/>
+			<checkbox:CheckDropList id="mon_area" width="200" dataProvider="{HeadArr}" filedLabel="label"/>
+			<s:Label text="季节类型"/>
+			<s:DropDownList id="seasonType" selectedIndex="0" dataProvider="{new ArrayCollection([{label:'',value:''},{label:'夏季',value:'夏季'},{label:'冬季',value:'冬季'}])}"/>
+			<s:Button buttonMode="true" label="查询" click="getInfo()"/>
+			<s:Button buttonMode="true" label="生成频率时间表" click="staticInfo()"/>
+			<s:Button buttonMode="true" label="导出" click="doExcel()" />
+			<s:Button buttonMode="true" label="按转播机构导出" click="doExcel1()"/>
+			<s:Button buttonMode="true" label="按语言导出" click="doExcel2()"/>
+		</s:HGroup>
+		<mx:Canvas  width="100%" height="100%">
+			<s:DataGrid width="100%" height="100%" showDataTips="true" id="grid" textAlign="center" dataProvider="{info}">
+				<s:columns>
+					<s:ArrayCollection>
+						<!--s:GridColumn headerText="选择" width="60" editable="false" itemRenderer="{RendererUtil.getCheckBoxRenderer(changeSelect)}" /-->
+						<s:GridColumn dataField="broadcast_time"  headerText="播音时间" />
+						<s:GridColumn dataField="local_start_time"  headerText="当地开始时间" />
+						<s:GridColumn dataField="local_end_time"  headerText="当地结束时间" />
+						<!--s:GridColumn dataField="service_area"  headerText="服务区" /-->
+						<s:GridColumn dataField="freq"  headerText="频率(KHZ)" />
+						<s:GridColumn dataField="launch_country"  headerText="发射国家" />
+						<s:GridColumn dataField="sentcity"  headerText="发射城市" />
+						<s:GridColumn dataField="redisseminators"  headerText="转播机构" />
+						<s:GridColumn dataField="language"  headerText="语言" />
+						<!--s:GridColumn dataField="direction"  headerText="方向" /-->
+						<s:GridColumn dataField="mon_area"  headerText="质量收测站点" />
+						<s:GridColumn dataField="xg_mon_area"  headerText="效果收测站点"/>
+						
+						<s:GridColumn dataField="valid_start_date"  headerText="启用期" />
+						<s:GridColumn dataField="valid_start_time"  headerText="启用时间" />
+						
+						<s:GridColumn dataField="valid_end_date"  headerText="停用期" />
+						<s:GridColumn dataField="valid_end_time"  headerText="停用时间" />
+						<s:GridColumn dataField="rest_datetime"  headerText="休息日期" />
+						<!--s:GridColumn dataField="summer"  headerText="夏令时" />
+						<s:GridColumn dataField="summer_starttime"  headerText="夏令时启用期" />
+						<s:GridColumn dataField="summer_endtime"  headerText="夏令时停用期" /-->
+					</s:ArrayCollection>
+				</s:columns>
+			</s:DataGrid>
+			<s:Label text="正在查询，请稍候..." id="clew_label" y="{grid.columnHeaderGroup.height+10}" color="0x000000" fontSize="15" width="100%" textAlign="center"  visible="false" includeInLayout="false" />
+		</mx:Canvas>	
+		<flipBar:PageBar width="100%" id="pagebar" rowConutOfPage="40" totalPageQuery="5" height="20"/>
+	</s:VGroup>
+</system:BasePage>

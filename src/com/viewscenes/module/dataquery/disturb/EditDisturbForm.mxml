@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow  xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" close="close(event);"
+				xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%"
+				creationComplete="init();"
+				xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+				xmlns:ip="com.viewscenes.utils.tools.*"
+				xmlns:global="com.viewscenes.global.*"
+				xmlns:checkbox="com.viewscenes.global.comp.checkbox.*"
+				mouseDown="startDrag()"
+				title="修改干扰信息"
+				mouseUp="stopDrag();">
+	<s:layout>
+		<s:FormItemLayout/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.viewscenes.beans.runplan.DisRunplanBean;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+			import com.viewscenes.utils.timecomp.DateUtil;
+			
+			import mx.collections.ArrayCollection;
+			import mx.managers.PopUpManager;
+			//ring
+			[Bindable]
+			private var inputString:String="";
+			//所要显示信息
+			[Bindable]
+			private var bean:DisRunplanBean =new DisRunplanBean();
+			//发射台
+			[Bindable]
+			private var stationArr:ArrayCollection=new ArrayCollection();
+			private function init():void{
+				if(inputString==""){
+					inputString=bean.disturb;
+				}
+				if(bean.type=="1"){
+					type.label="发射台";
+					station_name.text=bean.station_name;
+				}else{
+					type.label="转播机构";
+					station_name.text=bean.redisseminators
+				}
+				getStationList();
+			}
+			/**
+			 * 发射台
+			 */
+			private function getStationList():void{
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getStationList",null,getStationListBack,DataManager.showErrorMessageBack));
+			}
+			private function getStationListBack(arr:ArrayCollection):void{
+				for(var i:int;i<arr.length;i++){
+					if(bean.station_id==arr[i].station_id){
+						station_name.text=arr[i].name;
+					}
+				}
+			}
+			public function setRunplan(obj:Object):void{
+				bean=obj as DisRunplanBean;
+			}
+			/**
+			 * 修改干扰信息
+			 */
+			private function updateRun():void{
+				var disBean:DisRunplanBean= new DisRunplanBean();
+				disBean=bean;
+				disBean.disturb=disturb.text;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dataquery.disturb.FreqDisturbInfo","updateRunplan",disBean,showErrorMessager,showErrorMessager));
+			}
+			/**
+			 * 显示异常信息添加 刷新时间
+			 */
+			private function showErrorMessager(res:String):void{	
+					
+				if(res=="修改干扰信息成功!"){
+					MM.show(res);
+					this.dispatchEvent(new Event("Run_List_Refresh"))
+				}else{
+					DataManager.showErrorMessage(res)
+				}
+				close(null);	
+						
+			}
+			private function closeHandler():void{				
+				;
+				
+			}
+			/**
+			 * 关闭form
+			 */
+			private function close(e:Event):void{				
+				PopUpManager.removePopUp(this);
+				
+			}
+		]]>
+	</fx:Script>
+	<s:HGroup width="100%"  horizontalAlign="right" verticalAlign="middle">
+		<s:VGroup width="100%" height="100%" horizontalAlign="right" verticalAlign="middle">
+			<s:Form>
+				<s:FormItem id="type"  height="20">
+					<s:Label id="station_name"  />
+				</s:FormItem>
+				<!--s:FormItem label="转播机构" visible="{bean.type=='2'?true:false}" height="20">
+					<s:Label id="sentcity" text="{bean.sencity}"/>
+				</s:FormItem-->
+				<s:FormItem label="机号" height="20">
+					<s:Label id="transmiter_no" text="{bean.transmiter_no}"/>
+				</s:FormItem>
+				<s:FormItem label="频率(KHZ)" height="20">
+					<s:Label id="freq" text="{bean.freq}"/>
+				</s:FormItem>
+				<s:FormItem label="语言" height="20">
+					<s:Label id="language" text="{bean.language}"/>
+				</s:FormItem>
+				<s:FormItem label="开始时间" height="20">
+					<s:Label id="start_time" text="{bean.start_time}"/>
+				</s:FormItem>
+				<s:FormItem label="结束时间" height="20">
+					<s:Label id="end_time" text="{bean.end_time}"/>
+				</s:FormItem>
+				<s:FormItem label="启用日期" height="20">
+					<s:Label id="valid_start_time" text="{bean.valid_start_time}"/>
+				</s:FormItem>
+				<s:FormItem label="停用日期" height="20">
+					<s:Label  id="valid_end_time" text="{bean.valid_end_time}" />
+				</s:FormItem>
+				<s:FormItem label="干扰信息" height="20">
+					<s:TextInput id="disturb" text="{inputString}"  change="{inputString=disturb.text}"/>					
+				</s:FormItem>
+			</s:Form>
+			<s:FormItem width="216"  height="30">
+				<s:layout>
+					<s:HorizontalLayout/>
+				</s:layout>
+				<s:Button buttonMode="true" label="确认修改" click="updateRun();"/>
+				<s:Button buttonMode="true" label="取消修改" click="close(event)"/>
+			</s:FormItem>
+		</s:VGroup>
+	</s:HGroup>
+</s:TitleWindow>

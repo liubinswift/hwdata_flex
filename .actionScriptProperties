@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<actionScriptProperties analytics="false" mainApplicationPath="DataProcessFlex.mxml" projectUUID="70baa858-db5b-4de1-bed7-12b273269962" version="11">
+  <compiler additionalCompilerArguments="-locale en_US" autoRSLOrdering="true" copyDependentFiles="true" fteInMXComponents="false" generateAccessible="true" htmlExpressInstall="true" htmlGenerate="true" htmlHistoryManagement="true" htmlPlayerVersionCheck="true" includeNetmonSwc="false" outputFolderLocation="D:/workspaces/hwdata3/trunk/hwdata/monweb" outputFolderPath="bin-debug" removeUnusedRSL="true" sourceFolderPath="src" strict="true" targetPlayerVersion="0.0.0" useApolloConfig="false" useDebugRSLSwfs="true" useFlashSDK="false" verifyDigests="true" warn="true">
+    <compilerSourcePath>
+      <compilerSourcePathEntry kind="1" linkType="1" path="src/com/viewscenes/images"/>
+    </compilerSourcePath>
+    <libraryPath defaultLinkType="0">
+      <libraryPathEntry kind="4" path="">
+        <excludedEntries>
+          <libraryPathEntry kind="3" linkType="1" path="${PROJECT_FRAMEWORKS}/libs/flex.swc" useDefaultLinkType="false"/>
+          <libraryPathEntry kind="3" linkType="1" path="${PROJECT_FRAMEWORKS}/libs/core.swc" useDefaultLinkType="false"/>
+        </excludedEntries>
+      </libraryPathEntry>
+      <libraryPathEntry kind="1" linkType="1" path="libs"/>
+    </libraryPath>
+    <sourceAttachmentPath/>
+  </compiler>
+  <applications>
+    <application path="testChart.mxml"/>
+    <application path="test.mxml"/>
+    <application path="DataProcessFlex.mxml"/>
+    <application path="com/viewscenes/module/test/testChart1.mxml"/>
+  </applications>
+  <modules>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/dataquery/audioquery/AudioFileQuery.swf" optimize="true" sourcePath="src/com/viewscenes/module/dataquery/audioquery/AudioFileQuery.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/dicManager/redisseminatorsManager.swf" optimize="true" sourcePath="src/com/viewscenes/module/dicManager/redisseminatorsManager.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/dicManager/antennaManager.swf" optimize="true" sourcePath="src/com/viewscenes/module/dicManager/antennaManager.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/statistics/CJDSpectrumStatistics.swf" optimize="true" sourcePath="src/com/viewscenes/module/statistics/CJDSpectrumStatistics.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/freqtimetab/freqRecord.swf" optimize="true" sourcePath="src/com/viewscenes/module/freqtimetab/freqRecord.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/statistics/effectReport/EffectReportStatistics.swf" optimize="true" sourcePath="src/com/viewscenes/module/statistics/effectReport/EffectReportStatistics.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/checkSystemRunning/CheckSystemRunning.swf" optimize="true" sourcePath="src/com/viewscenes/module/checkSystemRunning/CheckSystemRunning.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/importDataManager/DataImportManager.swf" optimize="true" sourcePath="src/com/viewscenes/module/importDataManager/DataImportManager.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/statistics/GWStationQuality.swf" optimize="true" sourcePath="src/com/viewscenes/module/statistics/GWStationQuality.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/dataquery/originalEffect/OriginalEffectQuery.swf" optimize="true" sourcePath="src/com/viewscenes/module/dataquery/originalEffect/OriginalEffectQuery.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/runplanStatistics/wgtRunplanStatistics.swf" optimize="true" sourcePath="src/com/viewscenes/module/runplanStatistics/wgtRunplanStatistics.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/dicManager/seasonManager.swf" optimize="true" sourcePath="src/com/viewscenes/module/dicManager/seasonManager.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/runplanManager/gjtRunplanSplit.swf" optimize="true" sourcePath="src/com/viewscenes/module/runplanManager/gjtRunplanSplit.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/statistics/effectReport/FreqEffectStatistics.swf" optimize="true" sourcePath="src/com/viewscenes/module/statistics/effectReport/FreqEffectStatistics.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/devicemgr/equmaintain/EquipmentMaintenance.swf" optimize="true" sourcePath="src/com/viewscenes/module/devicemgr/equmaintain/EquipmentMaintenance.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/statistics/effectReport/EffectReportStatisticsLuoDi.swf" optimize="true" sourcePath="src/com/viewscenes/module/statistics/effectReport/EffectReportStatisticsLuoDi.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/runplanManager/hwRunplan.swf" optimize="true" sourcePath="src/com/viewscenes/module/runplanManager/hwRunplan.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/runplanManager/gjtRunplan.swf" optimize="true" sourcePath="src/com/viewscenes/module/runplanManager/gjtRunplan.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/runplanStatistics/hwRunplanStatistics.swf" optimize="true" sourcePath="src/com/viewscenes/module/runplanStatistics/hwRunplanStatistics.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/dicManager/languageManager.swf" optimize="true" sourcePath="src/com/viewscenes/module/dicManager/languageManager.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/dicManager/stationManager.swf" optimize="true" sourcePath="src/com/viewscenes/module/dicManager/stationManager.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/runplanStatistics/gjtRunplanStatistics.swf" optimize="true" sourcePath="src/com/viewscenes/module/runplanStatistics/gjtRunplanStatistics.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/runplanManager/wgtRunplan.swf" optimize="true" sourcePath="src/com/viewscenes/module/runplanManager/wgtRunplan.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/dataquery/inputAlarm/AlarmInputHW.swf" optimize="true" sourcePath="src/com/viewscenes/module/dataquery/inputAlarm/AlarmInputHW.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/freqtimetab/gjtfreq.swf" optimize="true" sourcePath="src/com/viewscenes/module/freqtimetab/gjtfreq.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/statistics/freq/EffectStatByFreq.swf" optimize="true" sourcePath="src/com/viewscenes/module/statistics/freq/EffectStatByFreq.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/sysmgr/index/IndexPage.swf" optimize="true" sourcePath="src/com/viewscenes/module/sysmgr/index/IndexPage.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/statistics/ykz/EffectStatByYkz.swf" optimize="true" sourcePath="src/com/viewscenes/module/statistics/ykz/EffectStatByYkz.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/statistics/HWLDEffectOfMonthSummary.swf" optimize="true" sourcePath="src/com/viewscenes/module/statistics/HWLDEffectOfMonthSummary.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/statistics/effectReport/TimeEffectStatistics.swf" optimize="true" sourcePath="src/com/viewscenes/module/statistics/effectReport/TimeEffectStatistics.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/dataquery/inputAlarm/AlarmInputGJT.swf" optimize="true" sourcePath="src/com/viewscenes/module/dataquery/inputAlarm/AlarmInputGJT.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/dicManager/onlineUserManager.swf" optimize="true" sourcePath="src/com/viewscenes/module/dicManager/onlineUserManager.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/log/notificationManager.swf" optimize="true" sourcePath="src/com/viewscenes/module/log/notificationManager.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/statistics/effectReport/EffectReportStatisticsCompare.swf" optimize="true" sourcePath="src/com/viewscenes/module/statistics/effectReport/EffectReportStatisticsCompare.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/statistics/YKZSpectrumStatistics.swf" optimize="true" sourcePath="src/com/viewscenes/module/statistics/YKZSpectrumStatistics.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/statistics/ykz/EffectStatByYkzLanguage.swf" optimize="true" sourcePath="src/com/viewscenes/module/statistics/ykz/EffectStatByYkzLanguage.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/runplanManager/cjdHWRunplanSplit.swf" optimize="true" sourcePath="src/com/viewscenes/module/runplanManager/cjdHWRunplanSplit.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/devicemgr/equmaintain/EquMaintain.swf" optimize="true" sourcePath="src/com/viewscenes/module/devicemgr/equmaintain/EquMaintain.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/dataquery/datainput/DataInputGJT.swf" optimize="true" sourcePath="src/com/viewscenes/module/dataquery/datainput/DataInputGJT.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/runplanStatistics/runplanStatisticsPic.swf" optimize="true" sourcePath="src/com/viewscenes/module/runplanStatistics/runplanStatisticsPic.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/runplanManager/hwRunplanSplit.swf" optimize="true" sourcePath="src/com/viewscenes/module/runplanManager/hwRunplanSplit.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/dataquery/disturb/FreqDisturbInfo.swf" optimize="true" sourcePath="src/com/viewscenes/module/dataquery/disturb/FreqDisturbInfo.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/sysmgr/dicManager/Season/SeasonTab.swf" optimize="true" sourcePath="src/com/viewscenes/module/sysmgr/dicManager/Season/SeasonTab.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/dicManager/azimuthManager.swf" optimize="true" sourcePath="src/com/viewscenes/module/dicManager/azimuthManager.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/runplanManager/gjtXGRunplanSplit.swf" optimize="true" sourcePath="src/com/viewscenes/module/runplanManager/gjtXGRunplanSplit.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/devicemgr/Equinstall/EquInstallManager.swf" optimize="true" sourcePath="src/com/viewscenes/module/devicemgr/Equinstall/EquInstallManager.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/sysmgr/dicManager/city/CityTab.swf" optimize="true" sourcePath="src/com/viewscenes/module/sysmgr/dicManager/city/CityTab.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/checkSystemRunning/SystemRunningCheck.swf" optimize="true" sourcePath="src/com/viewscenes/module/checkSystemRunning/SystemRunningCheck.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/sysmgr/user/UserModule.swf" optimize="true" sourcePath="src/com/viewscenes/module/sysmgr/user/UserModule.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/sysmgr/SiteManager/HeadendTab.swf" optimize="true" sourcePath="src/com/viewscenes/module/sysmgr/SiteManager/HeadendTab.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/devicemgr/faultreport/FaultReport.swf" optimize="true" sourcePath="src/com/viewscenes/module/devicemgr/faultreport/FaultReport.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/statistics/QualityDataStatistics.swf" optimize="true" sourcePath="src/com/viewscenes/module/statistics/QualityDataStatistics.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/statistics/HWLDProgramQuality.swf" optimize="true" sourcePath="src/com/viewscenes/module/statistics/HWLDProgramQuality.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/freqtimetab/hwldfreq.swf" optimize="true" sourcePath="src/com/viewscenes/module/freqtimetab/hwldfreq.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/statistics/GJTEffectOfMonthSummary.swf" optimize="true" sourcePath="src/com/viewscenes/module/statistics/GJTEffectOfMonthSummary.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/log/logbookManagement.swf" optimize="true" sourcePath="src/com/viewscenes/module/log/logbookManagement.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/dicManager/stateManager.swf" optimize="true" sourcePath="src/com/viewscenes/module/dicManager/stateManager.mxml"/>
+    <module application="src/DataProcessFlex.mxml" destPath="com/viewscenes/module/statistics/ykz/EffectStatByYkzStation.swf" optimize="true" sourcePath="src/com/viewscenes/module/statistics/ykz/EffectStatByYkzStation.mxml"/>
+  </modules>
+  <workers/>
+  <buildCSSFiles>
+    <buildCSSFileEntry destPath="bin-debug" sourcePath="src/DefaultStyle.css"/>
+  </buildCSSFiles>
+  <flashCatalyst validateFlashCatalystCompatibility="false"/>
+</actionScriptProperties>

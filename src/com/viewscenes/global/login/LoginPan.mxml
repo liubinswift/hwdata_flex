@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:BorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009"
+				   xmlns:s="library://ns.adobe.com/flex/spark"
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   width="100%" height="100%" backgroundColor="0xcccccc"
+				   creationComplete="init();" xmlns:contaners="com.morcha4.ui.contaners.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+		<s:Fade id="loginbtnFade" alphaTo="1" duration="1200" effectStart="{this.swfContent.gotoAndPlay(1)}"/>
+		<s:Fade id="fade" alphaTo="0" effectEnd="fadeEffectEnd()"
+				target="{this}"/>
+		<!-- s:Scale id="loginbtnFade"  scaleXFrom="0.01" scaleXTo="1" scaleYFrom="0.01" scaleYTo="1" duration="1200" effectStart="{this.swfContent.gotoAndPlay(1)}"/-->
+	</fx:Declarations>
+	<s:Image source="com/viewscenes/images/default/global2/index_bg.jpg" fillMode="scale" scaleMode="stretch" top="0" left="0" right="0" bottom="220"/>
+	<s:Image source="com/viewscenes/images/default/global2/index_pic.png" id="img2" fillMode="scale" top="0"   bottom="430"/>
+	<s:Image source="com/viewscenes/images/default/global2/index_logo.png" id="img3" fillMode="scale" top="0"   bottom="80"/>
+	<s:Image source="com/viewscenes/images/default/global2/index_bottom.png" fillMode="scale" scaleMode="stretch"  left="0" right="0" bottom="0"/>
+	<s:Button buttonMode="true"   id="loginBtn" styleName="loginButton" click="login();" width="238" height="145" bottom="135"/>
+	<s:Group id="loginGroup" bottom="10">
+		
+		<s:HGroup  width="500" height="200" id="mainLogin"
+				   verticalAlign="middle" fontSize="14" fontFamily="宋体" gap="20" visible="true">
+			<s:VGroup id="loginpan"  horizontalAlign="right">
+				<s:HGroup verticalAlign="middle" horizontalAlign="center">
+					<s:Label text="用户名" fontWeight="bold" width="50" color="0xffffff" textAlign="right"/>
+					<s:TextInput id="userName" width="200" text="" height="30"/>
+					<s:Label text="密码" fontWeight="bold" color="0xffffff" textAlign="right"/>
+					<s:TextInput id="password" width="200" displayAsPassword="true" enter="login();" text="" height="30"/>
+				</s:HGroup>
+				<s:Spacer height="6"/>
+				<s:Label id="initState" color="0xffffff" />
+			</s:VGroup>
+		</s:HGroup>
+	</s:Group>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCException;
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.frame.system.AdvancedEvent;
+			import com.morcha4.frame.system.EventBus;
+			import com.viewscenes.beans.user.PubUserBean;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.EventDeclare;
+			import com.viewscenes.global.SystemInit;
+			
+			import flash.utils.clearTimeout;
+			import flash.utils.setTimeout;
+			
+			import mx.controls.Alert;
+			import mx.core.UIComponent;
+			import mx.events.ResizeEvent;
+			
+			import spark.components.Group;
+			private var swfContent:MovieClip;
+			
+			public function init():void{
+//				this.swfContent=this.loginSwf.content as MovieClip;
+//				this.swfContent.gotoAndStop(1);
+				Alert.okLabel = "确定";
+				Alert.cancelLabel = "取消";
+				EventBus.addEventListener(EventDeclare.SYSTEM_INIT_STATE,setSatate);
+				userName.setFocus();
+				setTimeout(showLoginBtn,400);//正常5400
+//				showLoginBtn();//test
+				bordercontainer1_resizeHandler(null);
+			}
+			
+			private function showLoginBtn():void{
+//				loginpan.alpha=0;
+//				loginbtnFade.target = loginpan;
+//				loginbtnFade.play();
+//				userName.text = "admin";
+//				password.text = "admin";
+//				login();
+			}
+			
+			private function fadeEffectEnd():void{
+				if(this.parent != null){
+					(this.parent as Group).removeElement(this);
+				}
+			}
+			
+			public function login():void{
+				SystemInit.completeNum = 0;
+				
+				loginBtn.enabled = false;
+				
+				initState.text = "";
+				
+				EventBus.dispatchEvent(new AdvancedEvent(EventDeclare.SYSTEM_INIT_STATE,false,false,{flag:0,message:"验证用户"}));
+				
+//				var si:SystemInit = new SystemInit();  //test
+//				fade.play();//test
+//				initDataComplete();//test
+				
+				var obj:Object = new Object();
+				obj.userName = this.userName.text;
+				obj.password = this.password.text;
+				
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.sysmgr.user.PubUserManagerService","login",obj,loginBack,onFault));
+				
+			}
+			
+			private function loginBack(user:PubUserBean):void
+			{
+				// TODO Auto Generated method stub
+				
+				
+				DataManager.user = user;
+				EventBus.dispatchEvent(new AdvancedEvent(EventDeclare.LOGIN_USERNAME,false,false,user.userName));
+				EventBus.dispatchEvent(new AdvancedEvent(EventDeclare.SYSTEM_INIT_STATE,false,false,{flag:1,message:"验证用户成功"}));
+				
+				var si:SystemInit = new SystemInit();  //加载初始化数据
+				
+			}
+			
+			
+			/**
+			 * 错误处理
+			 * */
+			private function onFault(obj:RPCException):void
+			{
+				// TODO Auto Generated method stub
+				
+				EventBus.dispatchEvent(new AdvancedEvent(EventDeclare.SYSTEM_INIT_STATE,false,false,{flag:0,message:obj.message}));
+				
+			}
+			
+			
+			/**
+			 * 
+			 * 设置状态
+			 * 
+			 * */
+			protected function setSatate(event:AdvancedEvent):void
+			{
+				// TODO Auto-generated method stub
+				
+				var obj:Object = event.data;
+				
+				this.initState.text = obj.message;
+				
+				
+				var flag:int = obj.flag;
+				
+				if(flag == 0){
+					loginBtn.enabled = true;
+				}
+				
+				SystemInit.completeNum += flag;
+//				Alert.show(SystemInit.completeNum+"");
+				if(SystemInit.completeNum  == SystemInit.initFuncNum){
+					
+					
+					fade.play();
+					
+					initDataComplete();
+					
+				}
+				
+			}
+			/**
+			 * 系统初始化完成
+			 */
+			private function initDataComplete():void{
+				EventBus.dispatchEvent(new Event(EventDeclare.SYSTEM_INIT_COMPLETED,false,false));
+			}
+			
+
+			
+			protected function bordercontainer1_resizeHandler(event:ResizeEvent):void
+			{
+				loginGroup.x=width*0.5-275;
+				img2.x=width*0.5-444;
+				img3.x=width*0.5-162;
+				loginBtn.x=width*0.5-119;
+				
+			}
+			
+		]]>
+	</fx:Script>
+</s:BorderContainer>

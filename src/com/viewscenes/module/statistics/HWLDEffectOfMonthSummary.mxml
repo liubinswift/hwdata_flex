@@ -1,0 +1,787 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 xmlns:system="com.morcha4.frame.system.*" 
+				 width="100%" height="100%" xmlns:global="com.viewscenes.global.*" 
+				 xmlns:timecomp="com.viewscenes.utils.timecomp.*" 
+				 creationComplete="init()"
+				 xmlns:flipBar="com.viewscenes.utils.flipBar.*" xmlns:comp="com.viewscenes.global.comp.*" xmlns:checkbox="com.viewscenes.global.comp.checkbox.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+			import com.viewscenes.utils.timecomp.DateUtil;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.advancedDataGridClasses.AdvancedDataGridColumn;
+			
+			
+			[Bindable]
+			public var dataArray:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			private var oldstart:String="01";
+			[Bindable]
+			private var oldend:String="00";
+			[Bindable]
+			private var starttime:String="01";
+			[Bindable]
+			private var endtime:String="31";
+			[Bindable]
+			private var startmonth:String="";
+			[Bindable]
+			private var endmonth:String="";
+			[Bindable]
+			private var minwidth:Number=0;
+			protected function init():void
+			{
+				// TODO Auto-generated method stub
+				this.report.callBackDetailMethod=callBackDetailMethod;//报表详细显示方法
+				this.report.callBackExportMethod=callBackExportMethod;//报表导出方法
+				this.report.callBackGetParamMethod=callBackGetParamMethod;//取得查询报表时需要的条件的方法
+				this.report.callBackProofCheckDataMethod=callBackProofCheckDataMethod;
+				this.report.reportType="1009";//报表类型.
+				minwidth=this.width;
+			}
+			/**
+			 * 控制datagrid的提示框是否显示，以及显示内容
+			 * **/
+			public function con_clewlabel(_component:Label,_visible:Boolean,_label:String="")
+			{
+				_component.visible=_visible;
+				_component.includeInLayout=_visible;
+				_component.text=_label;
+			}
+			function callBackExportMethod():void{
+				
+				//ExportExcel.exportToExcelGWStation(result,pagebar.resutlList,"海外落地节目质量异态统计");
+				var url:String="com.viewscenes.web.statistics.EffectSummaryStatistics";
+				var func:String="doHWLDExcel";
+				
+				var head:String = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r';
+				head += '<msg type="'+url+'" function="'+func+'">\r';
+				var xmlText:String = head;
+				
+				if(this.report.reportBean==null){
+					MM.show("请查询报表后再导出！");
+					return;
+				}
+				xmlText += "<reportId>"+this.report.reportBean.report_id+"</reportId>";
+				xmlText += "<starttime>"+this.report.reportBean.start_datetime+"</starttime>";
+				xmlText += "<endtime>"+this.report.reportBean.end_datetime+"</endtime>";
+				xmlText += "</msg>";
+				
+				flash.external.ExternalInterface.call("toExcel",xmlText);
+			}
+			private function callBackDetailMethod(obj:Object):void{
+				if(obj == null){
+					obj = new Object();
+					obj.resultList = new ArrayCollection();
+					obj.resultTotal = 0;
+				}else{
+					obj.resultList=reArrayCollection(obj.resultList);
+					obj.resultTotal=obj.resultList.length
+				}
+				pagebar.m_queryProcess(obj,showBackDetailMethod);
+				
+			}
+			private function showBackDetailMethod(obj:ArrayCollection):void{
+				
+				con_clewlabel(clew_label,false);
+				dataArray.removeAll();
+				dataArray=obj;	
+				if(obj.length==0){
+					
+					con_clewlabel(clew_label,true,"无查询数据！");
+				}
+				
+			}
+			public function reArrayCollection(arr:ArrayCollection):ArrayCollection{
+				var newArr:ArrayCollection=new ArrayCollection();
+				var obj:Object=new Object();
+				var dayList:Object=new Object();
+				var num:Number=0;
+				var sum:Number=0;
+				var count:Number=0;
+				for(var i:int=0;i<arr.length;i++){
+					if(i==0){
+						obj.play_time=arr[i].play_time;
+						obj.frequency=arr[i].frequency;
+						obj.language_name=arr[i].language_name;
+						obj.station_name=arr[i].station_name;
+						obj.power=arr[i].power;
+						obj.direction=arr[i].direction;
+						obj.remote_headname=arr[i].remote_headname;
+						obj.remark=arr[i].remark;
+						obj.broadcasting_organizations=arr[i].broadcasting_organizations
+						obj.send_city=arr[i].send_city;
+						obj.send_county=arr[i].send_county;
+						obj.service_area=arr[i].service_area;
+						setDay(dayList,arr[i].datetime,arr[i].listen_middle);
+						count=Number(arr[i].count);
+						sum=Number(arr[i].listen_middle)*count;
+						num=count*Number(arr[i].listen)/100;
+					}else if(obj.play_time==arr[i].play_time&&obj.frequency==arr[i].frequency&&obj.language_name==arr[i].language_name&&
+						obj.broadcasting_organizations==arr[i].broadcasting_organizations&&obj.power==arr[i].power&&obj.remote_headname==arr[i].remote_headname&&obj.direction==arr[i].direction){
+						setDay(dayList,arr[i].datetime,arr[i].listen_middle)
+						count+=Number(arr[i].count);
+						sum+=Number(arr[i].listen_middle)*Number(arr[i].count);
+						num+=Number(arr[i].count)*Number(arr[i].listen)/100;
+						obj.remark+=arr[i].remark;
+					}else{
+						obj.dayList=dayList;
+						obj.count=count+"";
+						obj.listen=(num/count*100).toFixed(2);
+						obj.listen_middle=(sum/count).toFixed(0);
+						if(num/count*100<60){
+							if(obj.remark==""){
+								obj.remark="信号弱，杂音大。";
+							}
+						}
+						newArr.addItem(obj);
+						obj=new Object();
+						dayList=new Object();
+						
+						obj.play_time=arr[i].play_time;
+						obj.frequency=arr[i].frequency;
+						obj.language_name=arr[i].language_name;
+						obj.station_name=arr[i].station_name;
+						obj.power=arr[i].power;
+						obj.direction=arr[i].direction;
+						obj.remote_headname=arr[i].remote_headname;
+						obj.remark=arr[i].remark;
+						obj.direction=arr[i].direction;
+						obj.broadcasting_organizations=arr[i].broadcasting_organizations
+						obj.send_city=arr[i].send_city;
+						obj.send_county=arr[i].send_county;
+						obj.service_area=arr[i].service_area;
+						setDay(dayList,arr[i].datetime,arr[i].listen_middle);
+						count=Number(arr[i].count);
+						sum=Number(arr[i].listen_middle)*count;
+						num=count*Number(arr[i].listen)/100;
+					}
+					if(i==arr.length-1){
+						obj.count=count+"";
+						obj.listen=(num/count*100).toFixed(2);
+						obj.listen_middle=(sum/count).toFixed(0);
+						obj.dayList=dayList;
+						if(num/count*100<60){
+							if(obj.remark==""){
+								obj.remark="信号弱，杂音大。";
+							}
+						}
+						newArr.addItem(obj);
+					}
+				}
+				return newArr;
+			}
+			private function setDay(obj:Object,date:String,count:String):void{
+				var flag:Boolean=startmonth==date.substring(0,7);
+				var day:String=date.substring(8,10);
+				if(flag&&startmonth!=endmonth){
+					if(day=="01"){
+						obj.oldday01=count;
+						return
+					}
+					if(day=="02"){
+						obj.oldday02=count;
+						return
+					}
+					if(day=="03"){
+						obj.oldday03=count;
+						return
+					}
+					if(day=="04"){
+						obj.oldday04=count;
+						return
+					}
+					if(day=="05"){
+						obj.oldday05=count;
+						return
+					}
+					if(day=="06"){
+						obj.oldday06=count;
+						return
+					}
+					if(day=="07"){
+						obj.oldday07=count;
+						return
+					}if(day=="08"){
+						obj.oldday08=count;
+						return
+					}if(day=="09"){
+						obj.oldday09=count;
+						return
+					}if(day=="10"){
+						obj.oldday10=count;
+						return
+					}if(day=="11"){
+						obj.oldday11=count;
+						return
+					}
+					if(day=="12"){
+						obj.oldday12=count;
+						return
+					}
+					if(day=="13"){
+						obj.oldday13=count;
+						return
+					}
+					if(day=="14"){
+						obj.oldday14=count;
+						return
+					}
+					if(day=="15"){
+						obj.oldday15=count;
+						return
+					}
+					if(day=="16"){
+						obj.oldday16=count;
+						return
+					}
+					if(day=="17"){
+						obj.oldday17=count;
+						return
+					}if(day=="18"){
+						obj.oldday18=count;
+						return
+					}if(day=="19"){
+						obj.oldday19=count;
+						return
+					}if(day=="20"){
+						obj.oldday20=count;
+						return
+					}if(day=="21"){
+						obj.oldday21=count;
+						return
+					}
+					if(day=="22"){
+						obj.oldday22=count;
+						return
+					}
+					if(day=="23"){
+						obj.oldday23=count;
+						return
+					}
+					if(day=="24"){
+						obj.oldday24=count;
+						return
+					}
+					if(day=="25"){
+						obj.oldday25=count;
+						return
+					}
+					if(day=="26"){
+						obj.oldday26=count;
+						return
+					}
+					if(day=="27"){
+						obj.oldday27=count;
+						return
+					}if(day=="28"){
+						obj.oldday28=count;
+						return
+					}if(day=="29"){
+						obj.oldday29=count;
+						return
+					}if(day=="30"){
+						obj.oldday30=count;
+						return
+					}
+					if(day=="31"){
+						obj.oldday31=count;
+						return;
+					}
+				}
+				if(day=="01"){
+					obj.day01=count;
+					return
+				}
+				if(day=="02"){
+					obj.day02=count;
+					return
+				}
+				if(day=="03"){
+					obj.day03=count;
+					return
+				}
+				if(day=="04"){
+					obj.day04=count;
+					return
+				}
+				if(day=="05"){
+					obj.day05=count;
+					return
+				}
+				if(day=="06"){
+					obj.day06=count;
+					return
+				}
+				if(day=="07"){
+					obj.day07=count;
+					return
+				}if(day=="08"){
+					obj.day08=count;
+					return
+				}if(day=="09"){
+					obj.day09=count;
+					return
+				}if(day=="10"){
+					obj.day10=count;
+					return
+				}if(day=="11"){
+					obj.day11=count;
+					return
+				}
+				if(day=="12"){
+					obj.day12=count;
+					return
+				}
+				if(day=="13"){
+					obj.day13=count;
+					return
+				}
+				if(day=="14"){
+					obj.day14=count;
+					return
+				}
+				if(day=="15"){
+					obj.day15=count;
+					return
+				}
+				if(day=="16"){
+					obj.day16=count;
+					return
+				}
+				if(day=="17"){
+					obj.day17=count;
+					return
+				}if(day=="18"){
+					obj.day18=count;
+					return
+				}if(day=="19"){
+					obj.day19=count;
+					return
+				}if(day=="20"){
+					obj.day20=count;
+					return
+				}if(day=="21"){
+					obj.day21=count;
+					return
+				}
+				if(day=="22"){
+					obj.day22=count;
+					return
+				}
+				if(day=="23"){
+					obj.day23=count;
+					return
+				}
+				if(day=="24"){
+					obj.day24=count;
+					return
+				}
+				if(day=="25"){
+					obj.day25=count;
+					return
+				}
+				if(day=="26"){
+					obj.day26=count;
+					return
+				}
+				if(day=="27"){
+					obj.day27=count;
+					return
+				}if(day=="28"){
+					obj.day28=count;
+					return
+				}if(day=="29"){
+					obj.day29=count;
+					return
+				}if(day=="30"){
+					obj.day30=count;
+					return
+				}
+				if(day=="31"){
+					obj.day31=count;
+				}
+			}
+			private function callBackGetParamMethod():Object{
+				createDateColomns();
+				var obj:Object=new Object();
+				if(freq.text!=""&&freq.text.length!=0){
+					obj.freqs=freq.text;
+				}
+				return obj;
+			}
+			private function createDateColomns():void{
+				startmonth=report.starttime.substring(0,7);
+				endmonth=report.endtime.substring(0,7);
+				if(report.starttime!=report.endtime){
+					date.headerText="日期("+report.starttime+"到"+report.endtime+")";
+				}else{
+					date.headerText="日期("+report.endtime+"日)";
+				}
+				if(report.starttime.substring(0,7)==report.endtime.substring(0,7)){
+					starttime=report.starttime.substring(8,10);
+					endtime=report.endtime.substring(8,10);
+					oldstart="01";
+					oldend="00";
+				}else{
+					var startDate:Date=DateUtil.str2date(report.starttime.substring(0,7)+"-01");
+					var endDate:Date=DateUtil.str2date(report.endtime.substring(0,7)+"-01");
+					var day:Number=(endDate.time-startDate.time)/60/60/1000/24;
+					oldend=day+"";
+					oldstart=report.starttime.substring(8,10);
+					starttime="01";
+					endtime=report.endtime.substring(8,10);
+					
+				}
+			}
+			private function callBackProofCheckDataMethod():Boolean{				
+				var flag:Boolean=false;
+				var start:String=report.starttime;
+				var end:String=report.endtime;
+				if(start.substring(0,4)!=end.substring(0,4)){
+					flag=true;
+				}
+				if(start.substring(5,7)!=end.substring(5,7)){
+					if(Number(end.substring(5,7))-Number(start.substring(5,7))>1){
+						flag=true
+					}else if(report.starttime.substring(8,10)<=report.endtime.substring(8,10)){
+						flag=true;
+					}					
+				}
+				if(flag){
+					MM.show("一次最多只能统计一个月的数据，请重新统计");
+				}
+				
+				return flag;
+			}
+			private function oldday1Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday01;
+			}
+			private function oldday2Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday02;
+			}
+			private function oldday3Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday03;
+			}
+			private function oldday4Function(item:Object,gc:AdvancedDataGridColumn):String{
+				
+				return item.dayList.oldday04;
+			}
+			private function oldday5Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday05;
+			}
+			private function oldday6Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday06;
+			}
+			private function oldday7Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday07;
+			}
+			private function oldday8Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday08;
+			}
+			private function oldday9Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday09;
+			}
+			private function oldday10Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday10;
+			}
+			
+			private function oldday11Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday11;
+			}
+			private function oldday12Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday12;
+			}
+			private function oldday13Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday13;
+			}
+			
+			private function oldday14Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday14;
+			}
+			private function oldday15Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday15;
+			}
+			private function oldday16Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday16;
+			}
+			private function oldday17Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday17;
+			}
+			private function oldday18Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday18;
+			}
+			private function oldday19Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday19;
+			}
+			
+			private function oldday20Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday20;
+			}
+			private function oldday21Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday21;
+			}
+			private function oldday22Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday22;
+			}
+			private function oldday23Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday23;
+			}
+			private function oldday24Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday24;
+			}
+			private function oldday25Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday25;
+			}
+			private function oldday26Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday26;
+			}
+			private function oldday27Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday27;
+			}
+			private function oldday28Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday28;
+			}
+			private function oldday29Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday29;
+			}
+			private function oldday30Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday30;
+			}
+			private function oldday31Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.oldday31;
+			}
+			private function day1Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day01;
+			}
+			private function day2Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day02;
+			}
+			private function day3Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day03;
+			}
+			private function day4Function(item:Object,gc:AdvancedDataGridColumn):String{
+				
+				return item.dayList.day04;
+			}
+			private function day5Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day05;
+			}
+			private function day6Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day06;
+			}
+			private function day7Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day07;
+			}
+			private function day8Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day08;
+			}
+			private function day9Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day09;
+			}
+			private function day10Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day10;
+			}
+			
+			private function day11Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day11;
+			}
+			private function day12Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day12;
+			}
+			private function day13Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day13;
+			}
+			
+			private function day14Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day14;
+			}
+			private function day15Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day15;
+			}
+			private function day16Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day16;
+			}
+			private function day17Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day17;
+			}
+			private function day18Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day18;
+			}
+			private function day19Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day19;
+			}
+			
+			private function day20Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day20;
+			}
+			private function day21Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day21;
+			}
+			private function day22Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day22;
+			}
+			private function day23Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day23;
+			}
+			private function day24Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day24;
+			}
+			private function day25Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day25;
+			}
+			private function day26Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day26;
+			}
+			private function day27Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day27;
+			}
+			private function day28Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day28;
+			}
+			private function day29Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day29;
+			}
+			private function day30Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day30;
+			}
+			private function day31Function(item:Object,gc:AdvancedDataGridColumn):String{
+				return item.dayList.day31;
+			}
+		]]>
+	</fx:Script>
+	
+	
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	
+	
+	<s:VGroup width="100%" height="100%">
+		<s:HGroup width="100%" verticalAlign="middle" >
+			<!--s:Label text="站点:" />
+			<checkbox:CheckDropList id="station" dataProvider="{stationArr}" filedLabel="label" /-->
+			<s:Label text="频率:" />
+			<s:TextInput id="freq" />
+		</s:HGroup>
+		<comp:ReportIndexList id="report" height="110"/>		
+		
+		<s:VGroup width="100%" height="100%">
+			<s:HGroup width="100%" height="100%">
+				<mx:AdvancedDataGrid   height="100%" minWidth="{minwidth}" id="result"  showDataTips="true" dataProvider="{dataArray}"  textAlign="center" >
+					<mx:groupedColumns>					
+						<mx:AdvancedDataGridColumnGroup headerText="播音时间" dataField="play_time" minWidth="120"/>
+						<mx:AdvancedDataGridColumnGroup headerText="频率" dataField="frequency" minWidth="60"/>
+						<mx:AdvancedDataGridColumnGroup headerText="语言" dataField="language_name" minWidth="60"/>
+						<mx:AdvancedDataGridColumnGroup headerText="转播机构"  dataField="broadcasting_organizations" minWidth="80"/>
+						<mx:AdvancedDataGridColumnGroup headerText="发射功率"  dataField="power" minWidth="100"/>
+						<mx:AdvancedDataGridColumnGroup headerText="发射城市"  dataField="send_city" minWidth="100"/>
+						<mx:AdvancedDataGridColumnGroup headerText="发射国家"  dataField="send_county" minWidth="80"/>
+						<mx:AdvancedDataGridColumnGroup headerText="服务区"  dataField="service_area" minWidth="80"/>
+						<mx:AdvancedDataGridColumnGroup headerText="收测遥控站"  dataField="remote_headname" minWidth="120"/>
+						<mx:AdvancedDataGridColumnGroup headerText="收测次数"  dataField="count" minWidth="100"/>
+						<mx:AdvancedDataGridColumnGroup headerText="日期" id="date" minWidth="50" visible="true"  textAlign="center">
+							<mx:AdvancedDataGridColumnGroup headerText="1"   labelFunction="oldday1Function"  visible="{(oldstart>'01'||'01'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="2"   labelFunction="oldday2Function"  visible="{(oldstart>'02'||'02'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="3"   labelFunction="oldday3Function"  visible="{(oldstart>'03'||'03'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="4"   labelFunction="oldday4Function"  visible="{(oldstart>'04'||'04'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="5"   labelFunction="oldday5Function"  visible="{(oldstart>'05'||'05'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="6"   labelFunction="oldday6Function"  visible="{(oldstart>'06'||'06'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="7"   labelFunction="oldday7Function"  visible="{(oldstart>'07'||'07'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="8"   labelFunction="oldday8Function"  visible="{(oldstart>'08'||'08'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="9"   labelFunction="oldday9Function"  visible="{(oldstart>'09'||'09'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="10"  labelFunction="oldday10Function" visible="{(oldstart>'10'||'10'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="11"  labelFunction="oldday11Function" visible="{(oldstart>'11'||'11'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="12"  labelFunction="oldday12Function" visible="{(oldstart>'12'||'12'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="13"  labelFunction="oldday13Function" visible="{(oldstart>'13'||'13'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="14"  labelFunction="oldday14Function" visible="{(oldstart>'14'||'14'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="15"  labelFunction="oldday15Function" visible="{(oldstart>'15'||'15'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="16"  labelFunction="oldday16Function" visible="{(oldstart>'16'||'16'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="17"  labelFunction="oldday17Function" visible="{(oldstart>'17'||'17'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="18"  labelFunction="oldday18Function" visible="{(oldstart>'18'||'18'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="19"  labelFunction="oldday19Function" visible="{(oldstart>'19'||'19'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="20"  labelFunction="oldday20Function" visible="{(oldstart>'20'||'20'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="21"  labelFunction="oldday21Function" visible="{(oldstart>'21'||'21'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="22"  labelFunction="oldday22Function" visible="{(oldstart>'22'||'22'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="23"  labelFunction="oldday23Function" visible="{(oldstart>'23'||'23'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="24"  labelFunction="oldday24Function" visible="{(oldstart>'24'||'24'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="25"  labelFunction="oldday25Function" visible="{(oldstart>'25'||'25'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="26"  labelFunction="oldday26Function" visible="{(oldstart>'26'||'26'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="27"  labelFunction="oldday27Function" visible="{(oldstart>'27'||'27'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="28"  labelFunction="oldday28Function" visible="{(oldstart>'28'||'28'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="29"  labelFunction="oldday29Function" visible="{(oldstart>'29'||'29'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="30"  labelFunction="oldday30Function" visible="{(oldstart>'30'||'30'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="31"  labelFunction="oldday31Function" visible="{(oldstart>'31'||'31'>oldend)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="1"   labelFunction="day1Function"  visible="{(starttime>'01'||'01'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="2"   labelFunction="day2Function"  visible="{(starttime>'02'||'02'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="3"   labelFunction="day3Function"  visible="{(starttime>'03'||'03'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="4"   labelFunction="day4Function"  visible="{(starttime>'04'||'04'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="5"   labelFunction="day5Function"  visible="{(starttime>'05'||'05'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="6"   labelFunction="day6Function"  visible="{(starttime>'06'||'06'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="7"   labelFunction="day7Function"  visible="{(starttime>'07'||'07'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="8"   labelFunction="day8Function"  visible="{(starttime>'08'||'08'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="9"   labelFunction="day9Function"  visible="{(starttime>'09'||'09'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="10"  labelFunction="day10Function" visible="{(starttime>'10'||'10'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="11"  labelFunction="day11Function" visible="{(starttime>'11'||'11'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="12"  labelFunction="day12Function" visible="{(starttime>'12'||'12'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="13"  labelFunction="day13Function" visible="{(starttime>'13'||'13'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="14"  labelFunction="day14Function" visible="{(starttime>'14'||'14'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="15"  labelFunction="day15Function" visible="{(starttime>'15'||'15'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="16"  labelFunction="day16Function" visible="{(starttime>'16'||'16'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="17"  labelFunction="day17Function" visible="{(starttime>'17'||'17'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="18"  labelFunction="day18Function" visible="{(starttime>'18'||'18'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="19"  labelFunction="day19Function" visible="{(starttime>'19'||'19'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="20"  labelFunction="day20Function" visible="{(starttime>'20'||'20'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="21"  labelFunction="day21Function" visible="{(starttime>'21'||'21'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="22"  labelFunction="day22Function" visible="{(starttime>'22'||'22'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="23"  labelFunction="day23Function" visible="{(starttime>'23'||'23'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="24"  labelFunction="day24Function" visible="{(starttime>'24'||'24'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="25"  labelFunction="day25Function" visible="{(starttime>'25'||'25'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="26"  labelFunction="day26Function" visible="{(starttime>'26'||'26'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="27"  labelFunction="day27Function" visible="{(starttime>'27'||'27'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="28"  labelFunction="day28Function" visible="{(starttime>'28'||'28'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="29"  labelFunction="day29Function" visible="{(starttime>'29'||'29'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="30"  labelFunction="day30Function" visible="{(starttime>'30'||'30'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+							<mx:AdvancedDataGridColumnGroup headerText="31"  labelFunction="day31Function" visible="{(starttime>'31'||'31'>endtime)?false:true}" minWidth="40" textAlign="center"/>
+						</mx:AdvancedDataGridColumnGroup>
+						<mx:AdvancedDataGridColumnGroup headerText="可听率%"  dataField="listen" minWidth="120"/>
+						<mx:AdvancedDataGridColumnGroup headerText="可听度中值"  dataField="listen_middle" minWidth="120"/>
+						<mx:AdvancedDataGridColumnGroup headerText="备注"  dataField="remark" minWidth="60"/>
+						
+					</mx:groupedColumns>
+				</mx:AdvancedDataGrid>
+				<!--s:DataGrid width="100%" height="100%" id="result"  showDataTips="true" dataProvider="{dataArray}">
+					<s:columns>
+						<s:ArrayCollection>
+							<s:GridColumn headerText="日期" dataField="datetime"  />
+							<s:GridColumn headerText="播音时间" dataField="play_time"/>
+							<s:GridColumn headerText="频率" dataField="frequency" />
+							<s:GridColumn headerText="语言" dataField="language_name" />
+							<s:GridColumn headerText="转播机构"  dataField="broadcasting_organizations" />
+							<s:GridColumn headerText="发射国家"  dataField="send_county" />
+							<s:GridColumn headerText="发射城市"  dataField="send_city" />
+							<s:GridColumn headerText="发射功率"  dataField="power" />
+							<s:GridColumn headerText="服务区"  dataField="service_area" />
+							<s:GridColumn headerText="收测遥控站"  dataField="remote_headname" />
+							<s:GridColumn headerText="收测采集点"  dataField="collect_headname"/>
+							<s:GridColumn headerText="收测次数"  dataField="count"/>
+							<s:GridColumn headerText="可听率%"  dataField="listen"/>
+							<s:GridColumn headerText="可听度中值"  dataField="listen_middle"/>
+							<s:GridColumn headerText="备注"  dataField="remark" />
+						</s:ArrayCollection>
+					</s:columns>
+				</s:DataGrid-->
+			</s:HGroup>
+			<!--分页组件所在地-->
+			<s:Label text="正在查询，请稍候..." color="0x000000" id="clew_label" y="{result.columnHeaderGroup.height+10}" width="100%" textAlign="center"  visible="false" includeInLayout="false" />				
+			
+			<!--分页组件所在地-->
+			<flipBar:PageBar  id="pagebar" rowConutOfPage="30" totalPageQuery="10" height="20"/>
+		</s:VGroup>
+	</s:VGroup>
+</system:BasePage>

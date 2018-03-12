@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 xmlns:system="com.morcha4.frame.system.*"
+				 xmlns:flipBar="com.viewscenes.utils.flipBar.*"
+				 xmlns:tools="com.viewscenes.utils.tools.*"
+				 width="100%" height="100%">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCException;
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.util.RendererUtil;
+			import com.viewscenes.beans.SeasonBean;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+			
+			[Bindable]
+			private var seasonArr:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			private var addArr:ArrayCollection = new ArrayCollection();//临时存放新增的发射台信息
+			[Bindable]
+			private var updateArr:ArrayCollection = new ArrayCollection();//临时存放修改的发射台信息
+			[Bindable] private var selectedCounts:int=0;
+			/**
+			 *  查询季节信息
+			 * */
+			private function querySeason():void{
+				seasonArr.removeAll();
+				clew_label.visible=true;
+				clew_label.includeInLayout=true;
+				var bean:SeasonBean=new SeasonBean();
+				if(code.text!=""){
+					bean.code=code.text.toLocaleUpperCase();
+				}
+				var request:RORequestParam =new RORequestParam("com.viewscenes.web.dicManager.SeasonManager","querySeason",bean,querySeasonBack,DataManager.showErrorMessageBack);
+				pagebar.m_sendCmd(request);
+				
+			}
+			private function querySeasonBack(arr:ArrayCollection):void{
+				if(arr.length==0){
+					clew_label.text="无相关查询数据";
+				}else{
+					clew_label.visible=false;
+					clew_label.includeInLayout=false;
+					seasonArr=arr;
+				}
+			}
+			
+			private function addSeason():void{
+				var obj:Object = new Object();
+				obj.code="";
+				obj.start_time="";
+				obj.end_time="";
+				obj.is_now="";
+				seasonArr.addItemAt(obj,0);
+			}
+			
+			/**
+			 * 保存添加或者修改的数据
+			 * */
+			private function updateSeason():void{
+				var obj:Object = new Object();
+				addArr.removeAll();
+				updateArr.removeAll();
+				for(var i:int=0;i<seasonArr.length;i++){
+					if(seasonArr.getItemAt(i).isSelected=="true"){
+						var bean:SeasonBean = new SeasonBean();
+						
+						if(seasonArr.getItemAt(i).is_now==""){//新添加的数据
+							bean.code=seasonArr.getItemAt(i).code.toLocaleUpperCase();
+							bean.start_time = seasonArr.getItemAt(i).start_time;
+							bean.end_time = seasonArr.getItemAt(i).end_time;
+							addArr.addItem(bean);
+						}else{//修改原来的数据
+							bean.code=seasonArr.getItemAt(i).code.toLocaleUpperCase();
+							bean.start_time = seasonArr.getItemAt(i).start_time;
+							bean.end_time = seasonArr.getItemAt(i).end_time;
+							updateArr.addItem(bean);
+						}
+					}
+				}
+				if(addArr.length==0&&updateArr.length==0){
+					DataManager.showErrorMessage("没有需要保存修改的数据项!");
+					return;
+				}
+				obj.add=addArr;
+				obj.update=updateArr;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dicManager.SeasonManager","updateSeason",obj,updateSeasonBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function updateSeasonBack(res:String):void{
+				if(res.indexOf('成功')>=0){
+					DataManager.showErrorMessage(res);
+					querySeason();
+				}else{
+					DataManager.showErrorMessage(res);
+				}
+			}
+			/**
+			 * 删除季节代号
+			 * */
+			var codes:String="";
+			private function delSeason():void{
+				var flag:Boolean=true;
+				//var obj:Object = new Object();
+
+				for(var i:int=0;i<seasonArr.length;i++){
+					
+					if(seasonArr.getItemAt(i).isSelected=="true"){
+						flag=false;
+						if(seasonArr.getItemAt(i).code!=""){
+							codes+="'"+seasonArr.getItemAt(i).code+"',";
+						}
+						
+					}
+				}
+
+				
+				if(flag){
+					DataManager.showErrorMessage("请选择要删除的项!");
+					
+				}else{
+					if(codes!=""){
+						MM.show("您确定要删除吗?","删除季节代号",codes.substr(0,codes.length-1),confirmDel,true,cancelHandler,null);
+					}else{
+						MM.show("删除季节代号信息成功!","","",querySeason);
+					}
+				}
+			}
+			/**
+			 * 取消回调方法
+			 * */
+			private function cancelHandler():void{
+				codes="";
+			}
+			
+			private function confirmDel():void{
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dicManager.SeasonManager","delSeason",codes.substr(0,codes.length-1),delSeasonBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function delSeasonBack(res:String):void{
+				codes="";
+				DataManager.showErrorMessage(res);
+				querySeason();
+			}
+			
+			/**
+			 * 全选操作
+			 * */
+			private var selectState:String =" false";// 记录选中的状态
+			
+			private function selectAll():void{
+				if(btn1.label=="全选"){
+					btn1.label="取消全选";
+					selectState="true";
+					selectedCounts=seasonArr.length;
+				}else{
+					btn1.label="全选";
+					selectState="false";
+					selectedCounts=0;
+				}
+				for(var i:int=0;i<seasonArr.length;i++){
+					var obj:Object = seasonArr.getItemAt(i) as Object;
+					obj.isSelected=selectState;
+				}
+				seasonArr.refresh();
+				
+			}
+			//选择点中后执行的方法
+			private function changeSelect(obj:Object):void{
+				if(obj.data.isSelected=="true"){
+					this.selectedCounts=selectedCounts+1;  
+				}else{
+					this.selectedCounts=selectedCounts-1; 
+				}
+				if(selectedCounts==seasonArr.length){
+					btn1.label="取消全选";
+				}else{
+					btn1.label="全选";
+				}
+			}
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%" horizontalAlign="center" verticalAlign="middle">
+		<s:HGroup width="100%" height="25" verticalAlign="middle" horizontalAlign="left">
+			<s:HGroup width="50%"  verticalAlign="middle" horizontalAlign="left">
+				<s:Label text="季节代号:"/>
+				<s:TextInput id="code" width="100"/>
+			</s:HGroup>
+			<s:HGroup width="50%"  verticalAlign="middle" horizontalAlign="right">
+				<s:Button buttonMode="true" label="查询" click="querySeason()"/>
+				<s:Button buttonMode="true" label="增加" click="addSeason()"/>
+				<s:Button buttonMode="true" label="保存修改" click="updateSeason()"/>
+				<s:Button buttonMode="true" label="全选" id="btn1" click="selectAll()"/>
+				<s:Button buttonMode="true" label="删除" click="delSeason()"/>
+			</s:HGroup>			
+		</s:HGroup>
+		<mx:Canvas  width="100%" height="100%">
+			<s:DataGrid width="100%" height="100%" editable="true"  id="grid" textAlign="center" dataProvider="{seasonArr}">
+				<s:columns>
+					<s:ArrayCollection>
+						<s:GridColumn headerText="选择" width="60" editable="false" itemRenderer="{RendererUtil.getCheckBoxRenderer(changeSelect)}" />
+						<s:GridColumn dataField="code"  headerText="季节代号" />
+						<s:GridColumn dataField="start_time"  headerText="开始时间" />
+						<s:GridColumn dataField="end_time"  headerText="结束时间" />
+					</s:ArrayCollection>
+				</s:columns>
+			</s:DataGrid>
+			<s:Label text="正在查询，请稍候..." id="clew_label" y="{grid.columnHeaderGroup.height+10}" color="0x000000" fontSize="15" width="100%" textAlign="center"  visible="false" includeInLayout="false" />
+		</mx:Canvas>	
+		<flipBar:PageBar width="100%" id="pagebar" rowConutOfPage="40" totalPageQuery="5" height="20"/>
+
+	</s:VGroup>
+</system:BasePage>

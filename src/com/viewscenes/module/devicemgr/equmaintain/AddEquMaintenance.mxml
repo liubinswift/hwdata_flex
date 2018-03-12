@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" close="close(event);"
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%"
+			   creationComplete="init();" 
+			   xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+			   xmlns:ip="com.viewscenes.utils.tools.*"
+			   xmlns:global="com.viewscenes.global.*"
+			   xmlns:checkbox="com.viewscenes.global.comp.checkbox.*"
+			   mouseDown="startDrag()"
+			   title="添加站点运行信息"
+			   xmlns:net="flash.net.*"
+			   mouseUp="stopDrag();">
+	<s:layout>
+		<s:FormItemLayout/>
+	</s:layout>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.viewscenes.beans.EquipmentMaintenanceBean;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+			import com.viewscenes.utils.StringTool;
+			import com.viewscenes.utils.timecomp.DateUtil;
+			
+			import mx.collections.ArrayCollection;
+			import mx.managers.PopUpManager;
+			
+		
+			[Bindable]
+			private var beanflag:EquipmentMaintenanceBean = new EquipmentMaintenanceBean();
+			
+		
+			//站点
+			[Bindable]
+			public var headendArr:ArrayCollection = new ArrayCollection;
+			
+			
+			private function init():void{
+//				for(var i:int = 0;i<DataManager.getHeadendByState("all","all",false).length; i++){
+//					var obj:Object = DataManager.getHeadendByState("all","all",false).getItemAt(i);
+//					headendArr.addItemAt(obj,i);
+//				}
+//				headendArr=StringTool.clone(DataManager.headendBeanArr)
+				getHeanendArr();
+			}
+	
+			private function getHeanendArr():void{
+				var obj:Object=new Object();
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getHeadend",obj,_getHeanendArr,DataManager.showErrorMessageBack));
+			}
+			private function _getHeanendArr(arr:ArrayCollection):void{
+				if(arr.length==0){
+					MM.show("后台错误")
+				}else{
+					headendArr=arr;
+				}
+			}
+			private function AddEqu():void{
+				if(isOK()){
+					return ;
+				}
+				
+				beanflag.head_name=this.station.selectedItem.shortname;
+				beanflag.head_code=this.station.selectedItem.code;
+				beanflag.count=DateUtil.dayFromStarttimeAndEndtime(starttime.text+' 00:00:00',endtime.text+' 00:00:00')+'';
+				beanflag.starttime=this.starttime.text;
+				beanflag.endtime=this.endtime.text;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.devicemgr.equmaintain.EquipmentMaintenance","add",this.beanflag,_addEqu,_addEqu));
+			}
+			
+			public function _addEqu(res:String):void{
+				
+				DataManager.showErrorMessage(res);
+				this.dispatchEvent(new Event("Equ_main_refresh"));
+				close(null);
+			}
+			
+			private function close(e:Event):void{
+				//dispatchEvent(new AdvancedEvent("EquListRefresh",true,false,null));
+				PopUpManager.removePopUp(this);
+				
+			}
+	
+			private function isOK():Boolean{
+				if(station.selectedIndex==-1){
+					MM.show("请选择站点");
+					return true;
+				}
+				if(starttime.text>endtime.text){
+					MM.show("开始时间不能大于结束时间，请重新输入！");
+					return true;
+				}
+				
+				return false;
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+		
+		
+		
+	</fx:Declarations>
+	
+	<s:HGroup width="100%"  horizontalAlign="right" verticalAlign="middle">
+		<s:VGroup width="100%" height="100%" horizontalAlign="right" verticalAlign="middle">
+			<s:Form>
+
+				<s:FormItem label="站点名称 " height="20">
+					<s:ComboBox id="station" dataProvider="{headendArr}"  height="25"  labelField="shortname"/>
+				</s:FormItem>
+				
+				<s:FormItem label="故障开始时间" height="20">
+				
+					<timecomp:TimeNew id="starttime"  dateDisplay="date" TimeNewChanged="{beanflag.starttime=starttime.text;if(endtime.text.length>0){count.text=DateUtil.dayFromStarttimeAndEndtime(starttime.text+' 00:00:00',endtime.text+' 00:00:00')+''}}"/>
+					</s:FormItem>
+				<s:FormItem label="故障结束时间" height="20">
+					<timecomp:TimeNew id="endtime"    dateDisplay="date"  TimeNewChanged="{beanflag.endtime=endtime.text;if(starttime.text.length>0){count.text=DateUtil.dayFromStarttimeAndEndtime(starttime.text+' 00:00:00',endtime.text+' 00:00:00')+''}}"/>
+				</s:FormItem>
+				<s:FormItem label="累计时间"  height="20">
+					<s:TextInput id="count"  change="{beanflag.count=count.text}" editable="false"/>
+					
+				</s:FormItem>
+				<s:FormItem label="故障类型"  height="20">
+					<s:TextInput id="type"   change="{beanflag.type=type.text}"/>
+				</s:FormItem>
+				<s:FormItem label="故障设备"  height="20">
+					<s:TextInput id="equ" change="{beanflag.equ=equ.text}"/>
+				</s:FormItem>
+				<s:FormItem label="故障情况" height="20">
+					<s:TextInput id="type_name" change="{beanflag.type_name=type_name.text}" />
+					
+				</s:FormItem>
+				<s:FormItem label="处理情况"  height="20">
+					<s:TextInput id="handle"  change="{beanflag.handle=handle.text}" />
+				</s:FormItem>
+				<s:FormItem label="建议"  height="20">
+					<s:TextInput id="advice"  change="{beanflag.advice=advice.text}"/>
+					
+				</s:FormItem>
+				<s:FormItem label="备注"  height="20">
+					
+					<s:TextInput id="remark"   change="{beanflag.remark=remark.text}"/>
+				</s:FormItem>
+				
+			</s:Form>
+			<s:FormItem width="216"  height="30">
+				<s:layout>
+					<s:HorizontalLayout/>
+				</s:layout>
+				<s:Button buttonMode="true" label="确认添加" click="AddEqu();"/>
+				<s:Button buttonMode="true" label="关闭" click="close(event)"/>
+			</s:FormItem>
+		</s:VGroup>
+	</s:HGroup> 
+	
+	
+</s:TitleWindow>

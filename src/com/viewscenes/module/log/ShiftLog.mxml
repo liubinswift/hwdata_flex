@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow close="onClose()" title="新增工作日志详细信息" textAlign="center"
+			   xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" 
+			   width="100%"	
+			   height="100%"
+			   fontSize="12"
+			   mouseDown="startDrag()"
+			   mouseUp="stopDrag();" 	   
+			   xmlns:timecomp="com.viewscenes.utils.timecomp.*" 
+			   xmlns:checkbox="com.viewscenes.global.comp.checkbox.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.frame.system.AdvancedEvent;
+			import com.morcha4.frame.system.EventBus;
+			import com.viewscenes.beans.log.ShiftLogBean;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.utils.StringTool;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.managers.PopUpManager;
+			
+			
+			private var roleCollection:ArrayCollection = new ArrayCollection();
+			
+		    private var logid:String="";
+			
+			public function setDesc(logdesc:ShiftLogBean):void{
+				
+					this.logid=logdesc.id;
+					this.desc.text=logdesc.description;
+					this.start_time.text=logdesc.start_time;
+					this.end_time.text=logdesc.end_time;
+					this.from_username.text=logdesc.from_username;
+					this.douser_name.text=logdesc.douser_name;
+					this.create_time.text=logdesc.create_time;
+					if(logdesc.douser_name!="")
+					{
+						this.updateButton.visible=false;
+					}else
+					{
+						this.updateButton.visible=true;
+					}
+							
+					
+
+			}
+			
+			private function onClose():void{						
+				PopUpManager.removePopUp(this);
+			}
+			
+			private function updateTask():void{
+				
+				if(desc.text.length==0)
+				{
+					DataManager.showErrorMessage("交接班信息不能为空！");
+					this.desc.getFocus();
+					return;
+				}
+				
+				var log:ShiftLogBean=new ShiftLogBean();
+				log.id=logid;
+				log.description=desc.text;
+				log.from_userid=DataManager.user.userId;
+				log.from_username=DataManager.user.userName;
+					
+				log.start_time=this.start_time.text;
+				log.end_time=this.end_time.text;
+				var request:RORequestParam = new RORequestParam("com.viewscenes.web.log.ShiftLog","addAndUpdateLogList",log,addAndUpdateLogListProcess,DataManager.showErrorMessageBack);
+				RPCManager.sendCmd(request); 
+				
+			}
+			private function addAndUpdateLogListProcess(str:String):void{
+				
+				DataManager.showErrorMessage(str);
+				
+				PopUpManager.removePopUp(this);
+				
+				EventBus.dispatchEvent(new AdvancedEvent("refrushShiftLogQuery"));
+			}
+			
+			
+		]]>
+	</fx:Script>
+	
+	
+	<s:VGroup  gap="10" horizontalAlign="left"  paddingLeft="10"  paddingTop="20" width="100%" height="100%" verticalAlign="middle" mouseDown="event.stopImmediatePropagation();">
+		
+		
+		<s:HGroup gap="10">
+			<s:Label text="交接班信息 ："  textAlign="right"/> 
+			<s:TextArea id="desc" color="#000000" textAlign="left" width="400" height="200">	
+			</s:TextArea>
+		</s:HGroup>
+
+		<s:HGroup gap="10" verticalAlign="middle">  
+			<s:Label  text="开始时间：" textAlign="right"> </s:Label>
+			<timecomp:TimeNew id="start_time"/>
+			<s:Label  text="结束时间：" textAlign="right"> </s:Label>
+			<timecomp:TimeNew id="end_time"/>
+		</s:HGroup>
+		<s:HGroup gap="10" verticalAlign="middle">
+			<s:Label text="创 建 人："  textAlign="right"/> 
+			<s:TextInput text=""   id="from_username" enabled="false"/> 
+			<s:Spacer width="12"/>
+			<s:Label text=" 创建时间："  textAlign="right"/> 
+			<timecomp:TimeNew id="create_time" enabled="false"/>
+		</s:HGroup>
+		<s:HGroup gap="10" verticalAlign="middle">
+			<s:Label text="接 班 人："  textAlign="right"/> 
+			<s:TextInput text=""   id="douser_name" enabled="false"/> 
+		</s:HGroup>
+		<s:HGroup width="100%" height="25" horizontalAlign="center" verticalAlign="middle">
+			<s:Button buttonMode="true" id="updateButton" label="确定" click="updateTask()"/>
+		</s:HGroup>
+		
+	</s:VGroup>	
+</s:TitleWindow>		

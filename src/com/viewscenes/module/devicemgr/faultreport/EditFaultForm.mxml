@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+			   xmlns:ip="com.viewscenes.utils.tools.*"
+			   xmlns:checkbox="com.viewscenes.global.comp.checkbox.*"
+			   xmlns:advancedComboBox="com.morcha4.ui.advancedComboBox.*"
+			   width="100%" height="100%" close="close(event);" creationComplete="init();"
+			   mouseDown="startDrag()" mouseUp="stopDrag();" title="修改故障信息">
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+			
+			import mx.collections.ArrayCollection;
+			import mx.managers.PopUpManager;
+			[Bindable]
+			private  var faultObj:Object={
+				"alarm_id":"",//故障 id
+				"head_id":"",// 站点id
+				"equ_code":"",//接收机
+				"origin_alarmid":"",//原始报警ID
+				"alarm_datetime":"",//报警时间
+				"resume_datetime":"",//恢复时间
+				"is_resume":"",//是否恢复
+				"type":"",//故障类型
+				"reason":"",//原因
+				"description":"",//描述
+				"outputlinelevel":"",//输出电压
+				"inputlinelevel":"",//输入电压
+				"linefrequency":"",//外电频率
+				"batterylevel":"",//UPS电池电压
+				"upsstatus":"",//UPS状态字
+				"report_type":"",//上报类型：0，手动回收，1主动上报,2手动添加
+				"is_handle":"",//是否处理
+				"handle_datetime":"",// 处理日期
+				"operator":"",//处理人
+				"remark":"",//处理意见
+				"head_code":"",//站点代码
+				"shortname":"",//站点名称
+				"is_online":"",//是否在线
+				"ip":"",//站点IP
+				"is_delete":""//是够删除
+			};
+			[Bindable]
+			private var tempq:ArrayCollection = new ArrayCollection([{label:"供电异常报警",mode:"1"},{label:"接收机异常报警",mode:"2"},{label:"调制度卡报警",mode:"3"},{label:"调幅度卡报警",mode:"4"},{label:"语音压缩卡报警",mode:"5"},{label:"频偏卡报警",mode:"6"},{label:"电池电压低系统关机",mode:"7"},{label:"电视接收机异常",mode:"11"},{label:"视频压缩卡异常",mode:"12"}]);
+			[Bindable]
+			private var FaultStatementArray:ArrayCollection = new ArrayCollection([{label:"未解除",value:"0"},{label:"已解除",value:"1"}]);
+			[Bindable]
+			private var HandleStatementArray:ArrayCollection = new ArrayCollection([{label:"未处理",value:"0"},{label:"已处理",value:"1"}]);
+			[Bindable]
+			private var reportArr:ArrayCollection=new ArrayCollection([{label:"手动回收",value:"0"},{label:"主动上报",value:"1"},{label:"手动添加",value:"2"}]);
+			/**
+			 * 初始化方法
+			 */
+			private function init():void{
+				getIndex();
+				
+			}
+			/**
+			 * 得到下拉列表的选择
+			 */
+			private function getIndex():void{
+				var index:int= -1;
+				for(var i:int=0;i<tempq.length;i++){
+					if(faultObj.type==tempq[i].mode){
+						index=i;
+					}
+				}
+				type.selectedIndex=index;
+				if(faultObj.is_handle=="1"){
+					ishandle.selectedIndex=1;
+				}else{
+					ishandle.selectedIndex=0;
+					
+				}
+				handleChange();
+				if(faultObj.is_resume=="1"){
+					is_resume.selectedIndex=1;
+				}else{
+					is_resume.selectedIndex=0;
+					resume_datetime.enabled=false;
+				}
+				if(faultObj.report_type=="0"){
+					report_type.text="手动回收";
+				}
+				if(faultObj.report_type=="1"){
+					report_type.text="主动上报";
+				}
+				if(faultObj.report_type=="2"){
+					report_type.text="手动添加";
+				}
+			}
+			/**
+			 * 赋值
+			 */
+			public function setFault(obj:Object):void{
+				faultObj=obj;
+			}
+			/**
+			 * 修改故障信息
+			 */
+			private function updateFault():void{
+				if(validPsw()){
+					return ;
+				}
+				faultObj.type=type.selectedItem.mode;
+				faultObj.reason=reason.text;
+				faultObj.outputlinelevel=outputlinelevel.text;
+				faultObj.inputlinelevel=inputlinelevel.text;
+				faultObj.linefrequency=linefrequency.text;
+				faultObj.batterylevel=batterylevel.text;
+				faultObj.upsstatus=upsstatus.text;
+				faultObj.is_handle=ishandle.selectedItem.value;
+				if(ishandle.selectedIndex==0){
+					faultObj.operator="";
+					faultObj.handle_datetime="";
+					faultObj.remark="";
+				}else{
+					faultObj.operator=operator.text;
+					faultObj.handle_datetime=handle_datetime.text;
+					faultObj.remark=remark.text;
+				}
+				faultObj.is_resume=is_resume.selectedItem.value;
+				if(is_resume.selectedIndex==0){
+					faultObj.resume_datetime="";
+				}else{
+					faultObj.resume_datetime=resume_datetime.text;
+				}
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.devicemgr.faultreport.FaultReport","updateFault",faultObj,_updateFault,DataManager.showErrorMessageBack));
+			}
+			private function _updateFault(obj:Object):void{
+				this.dispatchEvent(new Event("Quality_list_refresh"));
+				close(null);
+			}
+			/**
+			 * 验证修改信息是够完全
+			 */
+			private function validPsw():Boolean{
+				if(reason.text==""||reason.text==null){
+					MM.show("报警原因不能为空");
+					return true;
+				}
+				if(ishandle.selectedIndex==1){
+					if(operator.text==""||operator.text==null){
+						MM.show("已处理，处理人不能为空");
+						return true;
+					}
+					if(handle_datetime.text==""||handle_datetime.text==null){
+						MM.show("已处理，处理时间不能为空");
+						return true;
+					}
+				}
+				if(is_resume.selectedIndex==1){
+					if(resume_datetime.text==null||resume_datetime.text==""){
+						MM.show("故障已解除，解除时间不能为空");
+						return true;
+					}
+				}
+				return false;
+			}
+			
+			private function resumeChange():void{
+				if(is_resume.selectedIndex==0){
+					resume_datetime.enabled=false;
+				}else{
+					resume_datetime.enabled=true;
+				}
+			}
+			private function handleChange():void{
+				if(ishandle.selectedIndex==0){
+					operator.editable=false;
+					handle_datetime.enabled=false;
+					remark.editable=false;
+				}else{
+					operator.editable=true;
+					handle_datetime.enabled=true;
+					remark.editable=true;
+				}
+			}
+			private function unhandle():void{
+				if(ishandle.selectedIndex==0){
+					MM.show("请先修改为已处理");
+				}
+			}
+			private function unhandle1():void{
+				if(ishandle.selectedIndex==0){
+					MM.show("请先修改为已处理");
+				}
+				if(operator.text==""){
+					MM.show("请先添加处理人");
+				}
+			}
+			private function unresume():void{
+				if(is_resume.selectedIndex==0){
+					MM.show("请先修改为已解除");
+				}
+			}
+			/**
+			 * 关闭窗口
+			 */
+			private function close(event:Event):void{
+				PopUpManager.removePopUp(this);
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<s:VGroup width="100%" height="100%" >
+		<s:HGroup verticalAlign="middle">		
+			<s:Form>
+				<s:FormItem height="20" label="报警站点">
+					<s:TextInput editable="false" text="{faultObj.shortname}"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="站点代码">
+					<s:TextInput editable="false" text="{faultObj.head_code}"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="报警时间">
+					<s:TextInput editable="false" text="{faultObj.alarm_datetime}"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="报警类型">
+					<s:ComboBox id="type" dataProvider="{tempq}"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="报警原因">
+					<s:TextInput id="reason" text="{faultObj.reason}"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="接收机编号">
+					<s:TextInput id="equ_code" editable="false" text="{faultObj.equ_code}"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="输出电压">
+					<s:TextInput id="outputlinelevel" text="{faultObj.outputlinelevel}"  restrict="-.0-9\"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="输入电压">
+					<s:TextInput id="inputlinelevel" text="{faultObj.inputlinelevel}"  restrict="-.0-9\"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="外电频率">
+					<s:TextInput id="linefrequency" text="{faultObj.linefrequency}"  restrict="-.0-9\"/>
+				</s:FormItem>
+			</s:Form>
+			<s:Form >
+				<s:FormItem height="20" label="UPS电池电压">
+					<s:TextInput id="batterylevel" text="{faultObj.batterylevel}" restrict="-.0-9\"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="UPS状态">
+					<s:TextInput id="upsstatus" text="{faultObj.upsstatus}"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="上报类型">
+					<s:TextInput id="report_type"  editable="false"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="是否处理">
+					<s:DropDownList id="ishandle" dataProvider="{HandleStatementArray}" change="handleChange()" />
+				</s:FormItem>
+				<s:FormItem height="20" label="处理人">
+					<s:TextInput id="operator" text="{faultObj.operator}" click="unhandle()"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="处理日期">
+					<timecomp:TimeNew id="handle_datetime" text="{faultObj.handle_datetime}" click="unhandle()"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="处理意见">
+					<s:TextInput id="remark" text="{faultObj.remark}" click="unhandle1()"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="故障是否解除">
+					<s:DropDownList id="is_resume" dataProvider="{FaultStatementArray}" change="resumeChange()"/>
+				</s:FormItem>
+				<s:FormItem height="20" label="解除故障时间">
+					<timecomp:TimeNew id="resume_datetime" text="{faultObj.resume_datetime}" click="unresume()"/>
+				</s:FormItem>
+			</s:Form>	
+		</s:HGroup>
+		<s:HGroup width="100%" height="35" verticalAlign="middle" horizontalAlign="center">
+			<s:Button buttonMode="true" label="修改" click="updateFault()"/>
+			<s:Button buttonMode="true" label="取消" click="close(null)"/>
+		</s:HGroup>
+	</s:VGroup>		
+</s:TitleWindow>

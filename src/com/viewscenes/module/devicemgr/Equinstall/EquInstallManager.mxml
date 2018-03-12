@@ -1,0 +1,400 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:system="com.morcha4.frame.system.*" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 width="100%" height="100%"  creationComplete="initApp();"
+				 xmlns:timecomp="com.viewscenes.utils.timecomp.*" xmlns:DataGrid="mor.DataGrid.*"
+				 xmlns:util="com.viewscenes.utils.*"
+				 xmlns:flipBar="com.viewscenes.utils.flipBar.*"
+				 xmlns:checkbox="com.viewscenes.global.comp.checkbox.*"
+				 PAGE_SHOW="reset()"
+				 xmlns:global="com.viewscenes.global.*">
+	
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.util.RendererUtil;
+			import com.viewscenes.beans.devicemgr.RadioEquInstallBean;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+			import com.viewscenes.utils.StringTool;
+			
+			import mx.collections.ArrayCollection;
+			import mx.managers.PopUpManager;
+			
+			import spark.events.RendererExistenceEvent;
+			
+			[Bindable]private var selectedCounts:int = 0;  //选择总数
+			[Bindable]private var type:String="";
+			//安装信息集合
+			[Bindable]
+			private var listEqu:ArrayCollection = new ArrayCollection();
+			//详细信息集合
+			[Bindable]
+			private var equList:ArrayCollection=new ArrayCollection();
+			[Bindable]
+			private var typeArray:ArrayCollection = new ArrayCollection([{label:"遥控站",value:"102"},{label:"采集点",value:"101"}]);
+			[Bindable]
+			private var placeArr:ArrayCollection=new ArrayCollection([{label:"全部",value:""},{label:"站点保存",value:"0"},{label:"报废处理",value:"1"}]);
+			[Bindable]
+			private var statusArr:ArrayCollection=new ArrayCollection([{label:"全部",code:"-1"},{label:"使用",code:"0"},{label:"备用",code:"1"},{label:"可修复",code:"2"},{label:"不可修复",code:"4"},{label:"报废",code:"3"}]);
+			[Bindable]
+			private var statusArr1:ArrayCollection=new ArrayCollection([{label:"全部",code:"-1"},{label:"使用",code:"0"},{label:"备用",code:"1"},{label:"可修复",code:"2"},{label:"不可修复",code:"4"},{label:"报废",code:"3"}]);
+			[Bindable]
+			private var statusArr2:ArrayCollection=new ArrayCollection([{label:"全部",code:"-1"},{label:"不可修复",code:"4"},{label:"报废",code:"3"}]);
+
+			//站点
+			[Bindable]
+			public var headendArr:ArrayCollection = new ArrayCollection;
+			[Bindable]
+			private var bianhaoArray:ArrayCollection =
+				new ArrayCollection([
+					{label:"BXM-252A",value:"BXM-252A"},					
+					{label:"KVM",value:"KVM"},
+					{label:"NI-1000",value:"NI-1000"},
+					{label:"SF-RM",value:"SF-RM"},
+					{label:"UPS",value:"UPS"},
+					{label:"电源控制器",value:"电源控制器"},
+					{label:"路由器",value:"路由器"},
+					{label:"天线",value:"天线"},
+					{label:"天线控制器",value:"天线控制器"}
+				]);
+			public function initApp():void{
+				
+				TypeChange();
+				
+			}
+			private function reset():void{
+				
+				TypeChange();
+			}
+			private function TypeChange():void{  //指标设备报警选择
+				
+				if(this.Type.selectedItem.label.toString()=="采集点"){
+					con_clewlabel(clew_label,false);
+					headendArr.removeAll();
+					var arr:ArrayCollection=DataManager.getHeadendByState("all","101",true);
+					for(var i:int = 0;i<arr.length; i++){
+						var obj:Object = arr.getItemAt(i);
+						
+						headendArr.addItem({label:obj.shortname,value:obj.code});
+					}
+					
+				}
+				else if(this.Type.selectedItem.label.toString()=="遥控站")				{
+					
+					con_clewlabel(clew_label,false);
+					headendArr.removeAll();
+					arr=DataManager.getHeadendByState("all","102",true);
+					for(i = 0;i<arr.length; i++){
+						obj = arr.getItemAt(i);
+						
+						headendArr.addItem({label:obj.shortname,value:obj.code});
+					}
+				}
+				
+			}
+			private function query():void{
+				if(isOK()){
+					return;
+				}
+				listEqu.removeAll();
+				con_clewlabel(clew_label,true,"正在查询，请稍候..");
+				type=Type.selectedIndex+"";
+				var obj:Object=new Object();
+				obj.type_id=Type.selectedItem.value;
+				obj.head_name =this.station.getText("label");
+				obj.equ_name=this.equ_name.text;
+				if(status.selectedItem.label!="全部"){
+					obj.status=status.selectedItem.code
+				}
+				if(save_place.selectedItem.label!="全部"){
+					obj.save_place=save_place.selectedItem.value;
+				}
+//				obj.starttime =StartTime_day.text;
+//				obj.enddate =EndTime_day.text;
+//				obj.order_id=order_id.text;
+				
+				pagebar.m_sendCmd(new RORequestParam("com.viewscenes.web.devicemgr.equinstall.EquInstallManager","queryEquInstall",obj,showBackDetailMethod,DataManager.showErrorMessageBack));
+				//				pagebar.m_sendCmd(new RORequestParam("com.viewscenes.web.devicemgr.equinstall.EquInstallManager","queryEquInstall",obj,_query,DataManager.showErrorMessageBack));
+				
+			}
+			private function _query(arr:ArrayCollection):void{
+				if(arr.length==0){					
+					obj = new Object();
+					obj.resultList = new ArrayCollection();
+					obj.resultTotal = 0;
+					pagebar.m_queryProcess(obj,showBackDetailMethod);
+					return;
+				}else{
+					var obj:Object=new Object();
+					obj.resultList=arr;
+					obj.resultTotal=obj.resultList.length
+					pagebar.m_queryProcess(obj,showBackDetailMethod);
+				}
+			}
+			private function showBackDetailMethod(obj:ArrayCollection):void{				
+				clew_label.visible=false;
+				clew_label.includeInLayout=false;
+				listEqu.removeAll();
+				if(obj.length==0){
+					clew_label.text="无查询数据！";
+					clew_label.visible=true;
+					clew_label.includeInLayout=true;					
+				}else{					
+					listEqu=obj ;
+				}								
+			}
+			private function addData():void{
+				
+				var pop:AddEquInstallForm = AddEquInstallForm(PopUpManager.createPopUp(this,AddEquInstallForm,true));
+				
+				
+				PopUpManager.centerPopUp(pop);
+				pop.addEventListener("Equ_list_refresh",refreshCityList);
+			}
+			protected function refreshCityList(event:Event):void
+			{
+				
+				query();
+				
+			}
+			private function isOK():Boolean{
+//				if(StartTime_day.text>EndTime_day.text){
+//					MM.show("开始时间不能大于结束时间，请重新输入！");
+//					return true;
+//				}
+				
+				return false;
+			}
+			//选择点中后执行的方法
+			private function changeSelect(obj:Object):void{
+				selectAll.selected=false;
+				if(obj.data.isSelected=="true"){
+					this.selectedCounts=selectedCounts+1;  
+				}else{
+					this.selectedCounts=selectedCounts-1; 
+				}
+				if(selectedCounts==listEqu.length){
+					selectAll.selected=true;
+				}
+			}
+			
+			/**
+			 * 删除
+			 **/
+			private var dellist:String = "";//删除详细数据id (多个id以逗号分隔)
+			private function comfirmDelete():void{
+				
+				dellist ="";
+				var del_number:Number = 0;
+				
+				for(var i:int=grid.dataProvider.length-1;i>=0;i--)
+				{
+					if(grid.dataProvider[i].isSelected=="true")
+					{
+						var id:String = grid.dataProvider[i].id;
+						
+						if(del_number==0)
+						{
+							
+							dellist = "'"+id+"'";
+							
+							
+						} else{
+							dellist += ","+"'"+id+"'";
+						}
+						del_number++;
+					}
+				}
+				
+				
+				
+				if(dellist!=""){
+					MM.show("您确定要删除吗？","删除确认",'',clickDeleteChoose,true,null,null);
+				}
+				else{
+					MM.show("请选择要删除的信息","警告");
+					return;
+				}
+			}
+			
+			//选择删除任务
+			private function clickDeleteChoose():void{
+				deleteDetailData(dellist);
+				
+			}
+			/**
+			 * 删除查询的详细数据
+			 **/
+			public function deleteDetailData(dellist:String):void{
+				
+				var obj:Object = new Object();//在后台删除
+				
+				for(var ii:int=grid.dataProvider.length-1;ii>=0;ii--) //在前台删除
+				{
+					if(grid.dataProvider[ii].isSelected=="true")
+					{
+						grid.dataProvider.removeItemAt(ii);
+						this.selectedCounts=selectedCounts-1;
+					}
+				}
+				
+				obj.dellist=dellist;
+				
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.devicemgr.equinstall.EquInstallManager","delEquList",
+					obj,_deleteQuality,DataManager.showErrorMessageBack))
+				
+			}
+			
+			private function _deleteQuality(obj:Object):void{ 
+				query();
+				MM.show("删除成功");
+				
+			}
+			private function showEqu(object:Object):void{
+				var pop:SeeEquInstallForm = SeeEquInstallForm(PopUpManager.createPopUp(this,SeeEquInstallForm,true));
+				pop.query(object.data);
+				pop.station_type=type;
+				PopUpManager.centerPopUp(pop);	
+				pop.addEventListener("Equ_list_refresh",refreshCityList);
+			}
+			private function _showEqu(arr:ArrayCollection):void{
+				var pop:SeeEquInstallForm = SeeEquInstallForm(PopUpManager.createPopUp(this,SeeEquInstallForm,true));			
+				PopUpManager.centerPopUp(pop);	
+				pop.addEventListener("Equ_list_refresh",refreshCityList);
+			}
+			public function con_clewlabel(_component:Label,_visible:Boolean,_label:String=""):void
+			{
+				_component.visible=_visible;
+				_component.includeInLayout=_visible;
+				_component.text=_label;
+			}
+			/**
+			 * 全选控制
+			 */
+			private function selectAllItem():void{
+				
+				if(listEqu == null || listEqu.length ==0){
+					return;
+				}
+				var check:Boolean = selectAll.selected;
+				if(check){
+					selectedCounts=listEqu.length;
+				}else{
+					selectedCounts=0;
+				}
+				for(var i:int=0; i<listEqu.length; i++){
+					var Obj:Object = listEqu.getItemAt(i) as Object;
+					Obj.isSelected = check.toString();
+				}
+				
+				listEqu.refresh(); //这个必须有，因为Obj.isSelected的值有变化，列表结果的dataProvider需要重新装载，即重新渲染
+			}
+			private function rePlace(item:Object,gd:GridColumn):String{
+				var place:String=item.save_place;
+				if(place=="0"){
+					return "站点存储";
+				}else{
+					return "报废处理";
+				}
+				
+			}
+			private function reStatus(item:Object,gd:GridColumn):String{
+				var statu:String=item.status;
+				for(var i:int=0;i<statusArr.length;i++){
+					if(statu==statusArr.getItemAt(i).code){
+						return statusArr.getItemAt(i).label;
+					}
+				}
+				return "";
+			}
+			private function reMailTime(item:Object,gd:GridColumn):String{
+				var time:String=item.mail_time;
+				if(time!=null&&time.length>10){
+					return time.substr(0,10);
+				}
+				return time;
+			}
+			private function savePlaceChange():void{
+				if(save_place.selectedIndex!=2){
+					status.dataProvider=statusArr1;
+					
+				}else{
+					status.dataProvider=statusArr2;
+					
+				}
+				status.selectedIndex=0
+			}
+		]]>
+	</fx:Script>
+	<s:Group  left="9" right="9" width="100%" height="100%">
+		<s:VGroup  width="100%" height="100%" horizontalAlign="left"  verticalAlign="middle" >
+			<s:VGroup     width="100%"   verticalAlign="middle">				
+				<s:HGroup  width="100%"  verticalAlign="middle">
+					<s:Label text="类 别："/>					
+					<s:ComboBox id="Type"  dataProvider="{typeArray}" change="TypeChange()" requireSelection="true" width="80"/>
+					<s:Label text="站 点："/>					
+					<checkbox:CheckDropList id="station" dataProvider="{headendArr}" />										
+					<s:Label text="设备名称：" />
+					<s:TextInput id="equ_name"  width="100"/>
+					<!--checkbox:CheckDropList id="equ_name" dataProvider="{bianhaoArray}" /-->
+					<s:Label text="设备保存位置" />
+					<s:ComboBox id="save_place" dataProvider="{placeArr}" requireSelection="true" width="80" change="savePlaceChange()" />
+					<s:Label text="设备状态："/>										
+					<s:ComboBox id="status" dataProvider="{statusArr}" requireSelection="true"  width="80"/>
+					<s:Spacer width="100%"/>
+					<s:Button buttonMode="true" label="查询" click="query()"  styleName="ButtonBlack"/>
+					<s:Button buttonMode="true" label="删除所选"  click="comfirmDelete()" styleName="ButtonBlack"/>	
+				</s:HGroup>
+				<!--mx:HRule width="100%" strokeWidth="1" strokeColor="#a0a0a0" shadowColor="#000000" />
+				<s:HGroup width="100%" verticalAlign="middle">
+					<s:Label text="邮寄时间：自"/>					
+					<timecomp:TimeNew id="StartTime_day" dateDisplay="date"/>					
+					<s:Label text="至 "/>				
+					<timecomp:TimeNew id="EndTime_day" dateDisplay="date"/>
+					<s:Label text="邮件单号："/>	
+					<s:TextInput id="order_id" />
+					<s:Spacer width="100%"/>
+					<s:Button buttonMode="true" label="查询" click="query()"  styleName="ButtonBlack"/>
+					<s:Button buttonMode="true" label="添加" click="addData()"  styleName="ButtonBlack"/>					
+					<s:Button buttonMode="true" label="删除所选"  click="comfirmDelete()" styleName="ButtonBlack"/>					
+				</s:HGroup-->				
+			</s:VGroup>
+			<s:Group width="100%" height="100%" top="12" bottom="60">				
+				<s:Group width="100%"  height="100%">
+					<s:DataGrid id="grid"  height="100%"  width="100%" dataProvider="{listEqu}" textAlign="center" >					
+						<s:columns>
+							<s:ArrayCollection>
+								<s:GridColumn headerText="选择" width="60"  itemRenderer="{RendererUtil.getCheckBoxRenderer(changeSelect)}" />
+								<s:GridColumn headerText="站点名称" dataField="head_name" />
+								<!--s:GridColumn headerText="站点代码" dataField="head_code"/-->
+								<s:GridColumn headerText="设备名称" dataField="equ_name"/>
+								<s:GridColumn headerText="设备编号" dataField="equ_id"/>	
+								<s:GridColumn headerText="设备保存地点" dataField="save_place" labelFunction="rePlace"/>
+								<s:GridColumn headerText="设备状态" dataField="status" labelFunction="reStatus"/>	
+								<s:GridColumn headerText="邮寄时间" dataField="mail_time" labelFunction="reMailTime"/>	
+								<s:GridColumn headerText="邮件单号" dataField="order_no"/>
+								<s:GridColumn  minWidth="50" headerText="修改设备状态" itemRenderer="{RendererUtil.getButtonRenderer('修改',showEqu)}"/>							
+							</s:ArrayCollection>
+						</s:columns>
+					</s:DataGrid>
+				</s:Group>
+				
+				<s:Label text="正在查询，请稍候..." color="0x000000" id="clew_label" y="{grid.columnHeaderGroup.height+10}" width="100%" textAlign="center"  visible="false" includeInLayout="false" />				
+			</s:Group>
+			<s:HGroup  width="100%" height="30" verticalAlign="middle" gap="10">
+				<s:CheckBox id="selectAll" selected="false" change="selectAllItem()"/>
+				<s:Label text="全选"/> 			
+				<s:Label width="20"/>			
+				<!--分页组件所在地-->
+				<flipBar:PageBar   width="100%" id="pagebar" rowConutOfPage="40" totalPageQuery="5" height="20"/>
+			</s:HGroup> 
+		</s:VGroup>	
+	</s:Group>
+</system:BasePage>

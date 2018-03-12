@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:VGroup xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" 
+		  width="100%" height="100%" 
+		  xmlns:timecomp="com.viewscenes.utils.timecomp.*" >
+	<fx:Declarations>
+		<!-- 报表索引组件-->
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.viewscenes.beans.ReportBean;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.utils.timecomp.DateUtil;
+			
+			
+
+			public var starttime:String="";
+			public var endtime:String="";
+			public var reportType:String="1001";
+			var handleType:String="query";
+			
+			[Bindable]
+			public var reportBean:ReportBean=null;
+			
+			/*
+			*
+			*/
+			public var callBackDetailMethod:Function = null;//查询详细数据方法
+			
+			public var callBackExportMethod:Function = null;//导出Excel方法
+			
+			public var callBackGetParamMethod:Function = null;//取得查询报表时需要的条件的方法
+			//校对时校验数据方法 返回值为true(不能统计) false(可以统计) 
+			public var callBackProofCheckDataMethod:Function = null;
+			[Bindable] 
+			var IndexData:ArrayCollection=new ArrayCollection;
+			
+			
+			
+			var operation:String="";
+			public function HandleReport(handlemethod:String):void
+			{
+				this.starttime=this.oStartValidDate.text;
+				this.endtime=this.oEndValidDate.text;
+				if(this.starttime>this.endtime){
+					MM.show("开始时间不能晚于结束时间!!");
+					return;
+				}
+				IndexData.removeAll();
+				clew_label.visible=true;
+				clew_label.includeInLayout=true;
+				this.handleType=handlemethod;
+				var obj:Object = new Object();
+				
+				obj.user_operation = handlemethod;
+				
+				var obj:Object = new Object();
+				obj.start_datetime = starttime;
+				obj.end_datetime = endtime;
+				obj.reportType = reportType;
+				obj.handlemethod = handlemethod;
+				var nowDate:String=DateUtil.date2str(new Date());
+				if(handlemethod == "statistic"){	
+					clew_label.text="正在统计,请稍候...";
+					if(callBackProofCheckDataMethod!=null){
+						var flag:Boolean=this.callBackProofCheckDataMethod();
+						if(flag){
+							this.reportBean=null;
+							return;
+						}
+					}
+					if( this.callBackGetParamMethod != null){
+						obj.queryParam = this.callBackGetParamMethod();
+					}
+					
+				}
+				if(handlemethod=="verify")
+				{
+					this.reportBean.verify_datetime=nowDate;
+					this.reportBean.verify_status="1";
+					this.reportBean.verify_user=DataManager.user.userName;
+				}
+				else if(handlemethod=="audit")
+				{
+					this.reportBean.authentic_datetime=nowDate;
+					this.reportBean.authentic_status="1";
+					this.reportBean.authentic_user=DataManager.user.userName;
+					
+				}
+				obj.reportBean = this.reportBean;
+				obj.user_name=DataManager.user.userName;
+				
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.Daoutil.ReportUtil","operationReport",obj,processHandle,DataManager.showErrorMessageBack));
+				
+			}
+			
+			private function processHandle(obj:Object):void
+			{
+				clew_label.visible=false;
+				clew_label.includeInLayout=false;
+				if(obj!=null)
+				{
+					
+					this.reportBean=obj.reportBean as ReportBean;
+					var reportDesc:Object=obj.reportDesc ;
+					
+					var arr:Array=new Array();
+					var obj2:Object=new Object();
+					
+					obj2.start_datetime=this.reportBean.start_datetime;
+					
+					obj2.end_datetime=this.reportBean.end_datetime;
+					obj2.modify_status=this.reportBean.import_user+"已统计"+this.reportBean.import_datetime
+					this.verifybutton.enabled=true;
+					this.excelBtn.enabled=true;
+				
+					if(this.reportBean.verify_status=="1")
+					{
+						obj2.verify_status=this.reportBean.verify_user+"已校对"+this.reportBean.verify_datetime;
+						this.authenticbutton.enabled=true;
+					} else{
+						this.authenticbutton.enabled=false;
+					}
+					
+					if(this.reportBean.authentic_status=="1")
+					{
+						obj2.authentic_status=this.reportBean.authentic_user+"已审核"+this.reportBean.authentic_datetime;
+					}
+				
+			
+					obj2.data_num=this.reportBean.data_num;
+					arr.push(obj2)
+					this.IndexData=new ArrayCollection(arr);
+					callBackDetailMethod(reportDesc);
+					//this.parentApplication.doReportReturn(reportDesc);
+					
+					
+				}else
+				{
+					
+					this.verifybutton.enabled=false;
+					this.authenticbutton.enabled=false;
+					this.excelBtn.enabled=false;
+					this.reportBean=null;
+					this.IndexData=new ArrayCollection();
+					callBackDetailMethod(null);
+					MM.show("您还没有统计"+starttime+"至"+endtime+"的数据","统计提示");
+					
+				}
+				
+				
+			}
+			
+			/**
+			 * 调用父页面导出excel方法
+			 */
+			private function exportExcel():void{
+				if(callBackExportMethod!=null){
+					callBackExportMethod();
+				}
+			}
+			/**
+			 * 根据状态显示页面按钮
+			 */
+			/*
+			
+			*/
+		]]>
+	</fx:Script>
+	
+	<s:HGroup width="100%"   verticalAlign="middle" paddingLeft="10">
+		<s:Label text="开始时间"/>
+		<timecomp:TimeNew  id="oStartValidDate" dateDisplay="date" />
+		<s:Spacer width="10"/>
+		<s:Label text="结束时间"/>
+		<timecomp:TimeNew  id="oEndValidDate" dateDisplay="date" />
+		<s:Spacer width="50"/>
+		
+		<s:Button buttonMode="true" id="queryBtn" label="查询"    click="HandleReport('query')" />	
+		<s:Button buttonMode="true" id="statisticsBtn" label="统计"   click="HandleReport('statistic')" />
+		<s:Button buttonMode="true" label="校对" id="verifybutton" click="HandleReport('verify')" enabled="false"/>
+		<s:Button buttonMode="true" label="审核" id="authenticbutton"   click="HandleReport('audit')" enabled="false"/>
+		<s:Button buttonMode="true" label="导出Excel" id="excelBtn"   click="exportExcel()"/>
+		
+	</s:HGroup>
+	<s:Group width="100%" height="100%">
+		<s:DataGrid width="100%" height="100%" id="datagrid"  showDataTips="true" textAlign="center" dataProvider="{IndexData}" >
+			<s:columns>
+				<s:ArrayCollection>
+					
+					<s:GridColumn headerText="开始日期" dataField="start_datetime"  id="start_datetime"  />
+					<s:GridColumn headerText="结束日期" dataField="end_datetime"  id="end_datetime" />
+					<s:GridColumn headerText="统计状态" dataField="modify_status" id="modify_status"  />
+					<s:GridColumn headerText="校对状态" dataField="verify_status"  id="verify_status"  />
+					<s:GridColumn headerText="审核状态"  dataField="authentic_status" id="authentic_status"  />
+					<s:GridColumn headerText="统计数量"  dataField="data_num" id="data_num"  />
+				</s:ArrayCollection>
+			</s:columns>
+		</s:DataGrid>
+		<mx:Label text="正在查询，请稍候..." id="clew_label" y="{datagrid.columnHeaderGroup.height+10}" width="100%" textAlign="center"  visible="false" includeInLayout="false" />
+	</s:Group>
+	
+</s:VGroup>

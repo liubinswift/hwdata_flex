@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 xmlns:system="com.morcha4.frame.system.*"
+				 width="100%" height="100%" 
+				 xmlns:timecomp="com.viewscenes.utils.timecomp.*" 
+				 xmlns:flipBar="com.viewscenes.utils.flipBar.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.frame.system.AdvancedEvent;
+			import com.viewscenes.beans.ImportFileBean;
+			import com.viewscenes.global.DataManager;
+			import com.morcha4.util.RendererUtil;
+			
+			[Bindable]
+			private var allselect:String="false";
+			[Bindable]
+			public var querydata:ArrayCollection = new ArrayCollection();
+			
+			private function clickChooseAll():void{
+				if(allselect=="false")
+				{
+					allselect="true";
+				}else
+				{
+					allselect="false";	
+				}
+				
+				for(var i:int=0;i<querydata.length;i++)
+				{
+					querydata.getItemAt(i).isSelected=allselect;
+					
+					querydata.refresh();
+					datagrid.dataProvider = querydata;
+				}
+				
+				
+			}
+			/*
+			**	通知查询方法
+			*/
+			public function clickQuery(event:AdvancedEvent=null):void{
+				con_clewlabel(clew_label,true,'正在查询，请稍候...');
+				querydata = new ArrayCollection();
+				
+				var obj:ImportFileBean = new ImportFileBean();
+				
+				obj.date=this.oEndValidDate.text;
+				pagebar.m_sendCmd( new RORequestParam("com.viewscenes.web.importDataManager.DataImportManager","getFileList",obj,clickQueryProcess,DataManager.showErrorMessageBack));
+				
+			}
+			private function clickQueryProcess(obj:ArrayCollection):void{
+				con_clewlabel(clew_label,false);
+				querydata.removeAll();
+				querydata=obj;	
+				if(obj.length==0){
+					
+					con_clewlabel(clew_label,true,"无查询数据！");
+				}
+				
+			}
+			/**
+			 * 控制datagrid的提示框是否显示，以及显示内容
+			 * author:cht
+			 * **/
+			public function con_clewlabel(_component:Label,_visible:Boolean,_label:String="")
+			{
+				_component.visible=_visible;
+				_component.includeInLayout=_visible;
+				_component.text=_label;
+			}
+
+
+			private function importData():void{
+				importbutton.enabled=false;
+				var selectlist:ArrayCollection = new ArrayCollection();
+				
+				for(var i:int=0;i<querydata.length;i++)
+				{
+					if(querydata.getItemAt(i).isSelected=="true")
+					{
+						 var bean:ImportFileBean=querydata.getItemAt(i) as ImportFileBean;
+						 //导入成功后还可以从新导入，需求提出：张嘉
+//						 if(bean.flag=="成功")
+//						 {
+//							 DataManager.showErrorMessage("选择中请去掉导入成功的文件！");
+//							 return;
+//						 }
+						selectlist.addItem(querydata.getItemAt(i));
+						
+					}
+				}
+				if(selectlist.length==0){
+					
+					DataManager.showErrorMessage("请选择导入的文件！");
+					return;
+				}
+				var request:RORequestParam = new RORequestParam("com.viewscenes.web.importDataManager.DataImportManager","importData",selectlist,clickChooseProcess,DataManager.showErrorMessageBack);
+				RPCManager.sendCmd(request); 
+				
+			}
+			private function clickChooseProcess(retStr:String):void{
+				importbutton.enabled=true;
+				DataManager.showErrorMessage(retStr);
+				clickQuery();
+			}
+			
+			//选择点中后执行的方法
+			[Bindable]
+			public var selectedCounts:int =0;
+			private function changeSelect(obj:Object):void{
+				
+				if(obj.data.isSelected=="true"){
+					this.selectedCounts=selectedCounts+1;  
+				}else{
+					this.selectedCounts=selectedCounts-1; 
+				}
+			}
+
+			
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%">
+		<s:HGroup width="100%" paddingLeft="10">
+			<s:Label text="日期"/>
+			<timecomp:TimeNew  id="oEndValidDate"  dateDisplay="date"/>
+			<s:Spacer width="50"/>
+			<s:Button buttonMode="true" click="clickQuery();" label="查询" />
+			<s:Spacer width="10"/>
+			<s:Button buttonMode="true" click="clickChooseAll();" label="全选" />
+			<s:Spacer width="10"/>
+			<s:Button buttonMode="true" click="importData();" id="importbutton" label="导入" />
+			<s:Spacer width="26"/>
+	  
+		</s:HGroup>
+		
+		
+		<s:Group width="100%" height="100%" top="12" bottom="60">
+			<s:DataGrid id="datagrid" width="100%"    textAlign="center" height="100%" dataProvider="{querydata}"  showDataTips="true">
+				<s:columns>  
+					<s:ArrayCollection>	
+						<s:GridColumn headerText="选择"  width="100" itemRenderer="{RendererUtil.getCheckBoxRenderer(changeSelect)}" />
+						<s:GridColumn headerText="日期 "  width="100" dataField="date" />
+						<s:GridColumn headerText="文件名" dataField="file_name"  />
+						<s:GridColumn headerText="大小(KB)" width="100" dataField="file_size"  />
+						<s:GridColumn headerText="导入状态" width="150" dataField="flag"  />
+				
+					</s:ArrayCollection>
+				</s:columns>
+			</s:DataGrid>
+				<s:Label text="正在查询，请稍候..."  color="0x000000"  id="clew_label" y="{datagrid.columnHeaderGroup.height+10}" width="100%" textAlign="center"  visible="false" includeInLayout="false" />				
+				
+			</s:Group>
+		
+		<flipBar:PageBar width="100%" height="20" id="pagebar" rowConutOfPage="20" totalPageQuery="5" />
+		
+		
+	</s:VGroup>
+</system:BasePage>

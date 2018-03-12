@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" close="close(event);"
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%"
+			   creationComplete="init();" 
+			   xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+			   xmlns:ip="com.viewscenes.utils.tools.*"
+			   mouseDown="startDrag()"
+			   title="打分信息"
+			   mouseUp="stopDrag();" xmlns:checkbox="com.viewscenes.global.comp.checkbox.*" xmlns:utils="com.viewscenes.utils.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.viewscenes.beans.ASRResBean;
+			import com.viewscenes.beans.RadioMarkZstViewBean;
+			import com.viewscenes.beans.RadioStreamResultBean;
+			import com.viewscenes.beans.pub.ResHeadendBean;
+			import com.viewscenes.beans.runplan.RunplanBean;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+			import com.viewscenes.utils.timecomp.DateUtil;
+			
+			import mx.collections.ArrayCollection;
+			import mx.managers.PopUpManager;
+			[Bindable]
+			private var radioStreamResultBean:RadioStreamResultBean =null;
+			//站点相关信息
+			[Bindable]
+			private var headendBean:ResHeadendBean =null;
+			//运行图相关信息
+			[Bindable]
+			private var runplanBean:RunplanBean =null;
+			
+			//打分相关信息,该对象如何不为空，则可修改分数
+			[Bindable]
+			private var radioMarkzstViewBean:RadioMarkZstViewBean = null;
+			[Bindable]
+			private var disArr:ArrayCollection=new ArrayCollection([{label:"J"},{label:"T"},{label:"H"},{label:"B.C"},{label:"HC"},{label:"Q"}]);
+			
+			private function init():void{
+				headendBean=DataManager.getHeadendById(radioStreamResultBean.head_id);
+				runplanBean=radioStreamResultBean.runplanBean;
+				radioMarkzstViewBean=radioStreamResultBean.radioMarkZstViewBean;
+				if(radioMarkzstViewBean.mark_id!=null&&radioMarkzstViewBean.mark_id.length!=0){
+					score_s.text=radioMarkzstViewBean.counts;
+					score_i.text=radioMarkzstViewBean.counti;
+					score_o.text=radioMarkzstViewBean.counto;
+					remark.text=radioMarkzstViewBean.remark;
+					disturbType.setText(radioMarkzstViewBean.description,"label");
+				}
+			}
+			public function setRadio(rsrB:RadioStreamResultBean):void{
+				radioStreamResultBean=rsrB;
+			}
+
+			
+			
+			
+			private function mark():void{
+				if(isOK()){
+					return ;
+				}
+				
+				//无打分纪录
+				if(this.radioMarkzstViewBean.mark_id==""||this.radioMarkzstViewBean.mark_id.length==0){
+					var markBean:RadioMarkZstViewBean=new RadioMarkZstViewBean();
+					if (radioStreamResultBean == null){
+						
+						DataManager.showErrorMessage("没有可打分的录音");
+						
+						return;
+					}
+					
+					if (headendBean == null){
+						DataManager.showErrorMessage("获取站点信息不正确,请与开发人员联系");
+						return ;
+					}
+					markBean.mark_type = "2";
+					markBean.mark_user=DataManager.user.userName;
+					markBean.head_code = headendBean.code;
+					markBean.headname = headendBean.shortname;
+					if (runplanBean != null){
+						markBean.station_id = runplanBean.station_id;
+						markBean.station_name = runplanBean.station_name;
+						markBean.runplan_id = runplanBean.runplan_id;
+						markBean.play_time = runplanBean.start_time + "-" + runplanBean.end_time;
+					}
+					markBean.level_value = radioStreamResultBean.levelValue;
+					markBean.fm_value = radioStreamResultBean.fmModulation;
+					markBean.am_value = radioStreamResultBean.amModulation;
+					markBean.offeset_value = radioStreamResultBean.offset;
+					markBean.frequency = radioStreamResultBean.frequency;
+					markBean.equ_code = radioStreamResultBean.equ_code;
+					markBean.file_name = radioStreamResultBean.filename;
+					var timeDiff:String = DateUtil.timeDiff(DateUtil.str2date(radioStreamResultBean.start_datetime),DateUtil.str2date(radioStreamResultBean.end_datetime),"sec");
+					markBean.file_length = timeDiff;
+					markBean.record_start_time = radioStreamResultBean.start_datetime;
+					markBean.record_end_time = radioStreamResultBean.end_datetime;
+					
+					markBean.task_id = radioStreamResultBean.task_id;
+					
+					markBean.counts=score_s.text;
+					markBean.counti=score_i.text;
+					markBean.counto=score_o.text;
+					markBean.remark=remark.text;
+					markBean.description=disturbType.getText("label");
+					var sDate:String = DateUtil.date2str(new Date);
+					var dDate:Date = DateUtil.addHours(new Date(),1);
+					
+					var unit:String = sDate.substr(11,2)+":00:00-"+ DateUtil.date2str(dDate).substr(11,2)+":00:00";
+					markBean.unit = unit;
+					markBean.mark_file_url = radioStreamResultBean.url;
+					this.radioMarkzstViewBean = markBean;
+					
+					RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dataquery.audioquery.AudioFileQuery","setMark",markBean,setMarkBack,DataManager.showErrorMessageBack));
+
+				}
+				//修改打分
+				else{
+					this.radioMarkzstViewBean.counti = score_i.text;
+					this.radioMarkzstViewBean.counts = score_s.text;
+					this.radioMarkzstViewBean.counto = score_o.text;
+					this.radioMarkzstViewBean.remark=remark.text;
+					this.radioMarkzstViewBean.description=disturbType.getText("label");
+					this.radioMarkzstViewBean.edit_user = DataManager.user.userId;
+					this.radioMarkzstViewBean.mark_type="2";
+					RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dataquery.audioquery.AudioFileQuery","updateMark",this.radioMarkzstViewBean,setMarkBack,DataManager.showErrorMessageBack));
+
+				}
+			
+			}
+			private function setMarkBack(str:String):void{
+				MM.show("打分完成");
+				this.dispatchEvent(new Event("AudioFile_refresh"));
+				close(null);
+			}
+			private function isOK():Boolean{
+				if(score_s.text==""){
+					MM.show("S的分值不能为空");
+					return true;
+				}		
+				if(score_i.text==""||score_i.text=="0"){
+					MM.show("I的分值不能为空或0");
+					return true;
+				}				
+				if(score_o.text==""){
+					MM.show("O的分值不能为空");
+					return true;
+				}
+				if(score_o.text>score_s.text){
+					MM.show("分值O不能大于S值");
+					return true
+				}
+				return false;
+			}
+			private function close(event:Event):void{
+				PopUpManager.removePopUp(this);	
+			}
+		]]>
+	</fx:Script>
+	<s:HGroup width="100%" height="100%" horizontalAlign="center">
+		<s:Form>
+			<s:FormItem label="分 值 S :" >
+				<utils:RegExpTextInput id="score_s" maxChars="1" tabIndex="1"   regex="/^[0-5]\d*$/" />
+			</s:FormItem>
+			<s:FormItem label="分 值 I :" >
+				<utils:RegExpTextInput id="score_i" maxChars="1" tabIndex="2"  regex="/^[0-5]\d*$/" />	
+			</s:FormItem>
+			<s:FormItem label="分 值 O :" >
+				<utils:RegExpTextInput id="score_o" maxChars="1" tabIndex="3"   regex="/^[0-5]\d*$/" />
+			</s:FormItem>
+			<s:FormItem label="干扰类型:" >
+				<checkbox:CheckDropList id="disturbType" dataProvider="{disArr}" filedLabel="label" />
+			</s:FormItem>
+			<s:FormItem label="备  注 :" >
+				<s:TextInput id="remark"  />	
+			</s:FormItem>
+			<s:FormItem height="20">
+				<s:layout>
+					<s:HorizontalLayout/>
+				</s:layout>
+				<s:Button label="打分" click="mark()"/>
+				<s:Button label="取消" click="close(null)" />
+			</s:FormItem>
+		</s:Form>
+		<!--s:HGroup width="100%" height="24" verticalAlign="middle">
+			<s:Label text="分值S:"/>
+				<utils:RegExpTextInput id="score_s" maxChars="1" tabIndex="1" width="45"  regex="/^[0-5]\d*$/" />
+			<s:Label text="分值I:"/>
+				<utils:RegExpTextInput id="score_i" maxChars="1" tabIndex="2" width="45" regex="/^[0-5]\d*$/" />								
+		</s:HGroup>
+		<s:HGroup width="100%" height="24" verticalAlign="middle">
+			<s:Label text="分值O:"/>
+				<utils:RegExpTextInput id="score_o" maxChars="1" tabIndex="3" width="45"  regex="/^[0-5]\d*$/" />	
+			
+		</s:HGroup>
+		<s:HGroup	width="100%"  verticalAlign="middle">
+			<s:Label text="干扰类型:" />
+				<checkbox:CheckDropList id="disturbType" dataProvider="{disArr}" filedLabel="label" width="100"/>					
+		</s:HGroup>
+		<s:HGroup width="100%" height="24" verticalAlign="middle">
+			<s:Label text="备注:" />	
+				<s:TextInput id="remark"  />	
+		</s:HGroup>
+		<s:HGroup   height="30" horizontalAlign="center" verticalAlign="middle">
+			<s:Button label="打分" click="mark()"/>
+			<s:Button label="取消" click="close(null)" />
+		</s:HGroup-->
+	</s:HGroup>
+</s:TitleWindow>

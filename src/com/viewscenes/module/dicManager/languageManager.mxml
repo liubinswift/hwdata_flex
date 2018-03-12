@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx"
+				 xmlns:system="com.morcha4.frame.system.*" 
+				 xmlns:flipBar="com.viewscenes.utils.flipBar.*"
+				 xmlns:tools="com.viewscenes.utils.tools.*"
+				 width="100%" height="100%" creationComplete="init()">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.util.RendererUtil;
+			import com.viewscenes.beans.ZdicLanguageBean;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.SystemInit;
+			import com.viewscenes.global.comp.MM;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.CloseEvent;
+			
+			//语言集合
+			[Bindable]
+			private var languageArr:ArrayCollection=new ArrayCollection();
+			
+			//添加语言集合
+			[Bindable]
+			private var insertArr:ArrayCollection=new ArrayCollection();
+			
+			//修改语言集合
+			[Bindable]
+			private var updateArr:ArrayCollection=new ArrayCollection();
+			
+			//初始化方法
+			public function init():void{
+			
+			}
+			/**
+			 * 查询语言信息
+			 */
+			private function getLanguage():void{
+				
+				selectedCounts=0;
+				languageArr.removeAll();
+				clew_label.includeInLayout=true;
+				clew_label.visible=true;
+				var bean:ZdicLanguageBean=new ZdicLanguageBean();
+				pagebar.m_sendCmd(new RORequestParam("com.viewscenes.web.sysmgr.dicManager.LanguageTab","getLanguage",bean,_getLanguage,DataManager.showErrorMessageBack));
+			}
+			private function _getLanguage(arr:ArrayCollection):void{
+				if(arr.length==0){
+					clew_label.text="无查询数据！";
+				}else{
+					clew_label.includeInLayout=false;
+					clew_label.visible=false;
+					languageArr=arr;
+				}
+			}
+			/**
+			 * 页面上添加一行数据
+			 */
+			private function addLanguage():void{
+				var obj:Object = new Object();
+				obj.language_id="";
+				obj.language_name="";
+				languageArr.addItemAt(obj,0);
+			}
+			/**
+			 * 添加或修改数据到数据库
+			 */
+			private function updateLanguange():void{
+				insertArr.removeAll();
+				updateArr.removeAll();
+				var n:int=languageArr.length;
+				for(var i:int=0;i<n;i++){
+					if(languageArr.getItemAt(i).isSelected=="true"){
+						if(languageArr.getItemAt(i).language_name==""||languageArr.getItemAt(i).language_name.length==0){
+							MM.show("语言名称不能为空");
+							return;
+						}
+						if(languageArr.getItemAt(i).language_id ==""){//说明是插入操作
+							insertArr.addItem(languageArr.getItemAt(i));	
+						}
+						else{//说明是插入更新
+							updateArr.addItem(languageArr.getItemAt(i));
+						}
+					}
+				}
+				if(insertArr.length==0&&updateArr.length==0){
+					MM.show("请选择要确认的信息");
+					return;
+				}
+				var obj:Object=new Object();
+				obj.insert=insertArr;
+				obj.update=updateArr;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.sysmgr.dicManager.LanguageTab","updateLanguange",obj,_updateLanguage,DataManager.showErrorMessageBack));
+				
+			}
+			private function _updateLanguage(arr:ArrayCollection):void{
+				MM.show("操作成功,成功插入"+arr.getItemAt(0).toString()+"条,成功更新"+arr.getItemAt(1).toString()+"条");
+				var si:SystemInit = new SystemInit();  
+				si.getConfigData();
+				getLanguage();
+				
+			}
+			private var dellist:String="";
+			/**
+			 * 删除所选中的语言信息
+			 */
+			private function deleteLanguage():void{
+				dellist ="";
+				var del_number:Number = 0;
+				for(var i:int=datagrid.dataProvider.length-1;i>=0;i--)
+				{
+					if(datagrid.dataProvider[i].isSelected=="true")
+					{
+						var language_id:String = datagrid.dataProvider[i].language_id;
+						
+						if(del_number==0)
+						{
+							
+							dellist = "'"+language_id+"'";
+							
+							
+						} else{
+							dellist += ","+"'"+language_id+"'";
+						}
+						del_number++;
+					}
+				}
+				if(dellist!=""){
+					
+					MM.show("您确定要删除吗?？","删除确认",'',clickDeleteChoose,true,null,null);
+				}
+				else{
+					MM.show("请选择要删除的信息","警告");
+					return;
+				}
+			}
+			
+			
+			//选择删除任务
+			private function clickDeleteChoose():void{
+				deleteDetailData(dellist);
+				
+			}
+			
+			
+			/**
+			 * 删除查询的详细数据
+			 **/
+			public function deleteDetailData(dellist:String):void{
+				selectAll.selected = false;
+				//				Alert.show(IdList);
+//				for(var i:int=datagrid.dataProvider.length-1;i>=0;i--) //在前台删除
+//				{
+//					if(datagrid.dataProvider[i].isSelected=="true")
+//					{
+//						datagrid.dataProvider.removeItemAt(i);
+//					}
+//				}
+				
+				var obj:Object = new Object();//在后台删除
+				
+				obj.dellist=dellist;
+				
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.sysmgr.dicManager.LanguageTab","deleteLanguage",
+					obj,_deleteLanguage,DataManager.showErrorMessageBack))
+				
+			}
+			
+			private function _deleteLanguage(obj:Object):void{ 
+				var si:SystemInit = new SystemInit();  
+				si.getConfigData();
+				getLanguage();
+				MM.show("删除成功");
+				
+			}
+			private var selectedCounts:int=0;
+			//选择点中后执行的方法
+			private function changeSelect(obj:Object):void{
+				selectAll.selected=false;
+				if(obj.data.isSelected=="true"){
+					this.selectedCounts=selectedCounts+1;  
+				}else{
+					this.selectedCounts=selectedCounts-1; 
+				}
+				if(selectedCounts==languageArr.length){
+					selectAll.selected=true;	
+				}
+			}
+			/**
+			 * 全选控制
+			 */
+			private function selectAllItem():void{
+				
+				if(languageArr == null || languageArr.length ==0){
+					return;
+				}
+				var check:Boolean = selectAll.selected;
+				if(check){
+					selectedCounts=languageArr.length;
+				}else{
+					selectedCounts=0;
+				}
+				for(var i:int=0; i<languageArr.length; i++){
+					var Obj:Object = languageArr.getItemAt(i) as Object;
+					Obj.isSelected = check.toString();
+				}
+				
+				languageArr.refresh(); //这个必须有，因为Obj.isSelected的值有变化，列表结果的dataProvider需要重新装载，即重新渲染
+			}
+			/**
+			 * 导出excel
+			 * */
+			private function getLanguageExcel():void
+			{
+				var url:String="com.viewscenes.web.sysmgr.dicManager.LanguageTab";
+				var func:String="getLanguageExcel";
+				
+				var head:String = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r';
+				head += '<msg type="'+url+'" function="'+func+'">\r';
+				var xmlText:String = head;
+				
+				xmlText += "</msg>";				
+				flash.external.ExternalInterface.call("toExcel",xmlText);
+				
+			}
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%" >
+		<s:HGroup width="100%" horizontalAlign="right" verticalAlign="middle" >
+			<s:Button buttonMode="true" label="查询" click="getLanguage()" width="100"/>
+			<s:Button buttonMode="true" label="添加" click="addLanguage()" width="100"/>
+			<s:Button buttonMode="true" label="确认编辑" click="updateLanguange()" width="100"/>
+			<s:Button buttonMode="true" label="删除所选" click="deleteLanguage()" width="100"/>
+			<s:Button buttonMode="true" label="导出Excel" width="100" click="getLanguageExcel();"/>
+		</s:HGroup>
+		<s:Group width="100%" height="100%">
+			<s:DataGrid id="datagrid" width="100%" height="100%"  dataProvider="{languageArr}" editable="true">
+				<s:columns>
+					<s:ArrayCollection>
+						<s:GridColumn  headerText="选择" width="100" editable="false" itemRenderer="{RendererUtil.getCheckBoxRenderer(changeSelect)}"/>
+						<s:GridColumn headerText="语言名称" dataField="language_name" itemEditor="com.morcha4.editor.TextEditor"/>
+						<s:GridColumn dataField="broadcast_direction" itemEditor="com.morcha4.editor.TextEditor" headerText="播向区" />
+					</s:ArrayCollection>
+				</s:columns>
+			</s:DataGrid>
+			<s:Label text="正在查询，请稍候..."  color="0x000000" id="clew_label" y="{datagrid.columnHeaderGroup.height+10}" width="100%" textAlign="center" visible="false" includeInLayout="false" />		
+		</s:Group>
+		
+		<s:HGroup  width="100%" height="30" verticalAlign="middle" gap="10">
+			<s:CheckBox id="selectAll" selected="false" change="selectAllItem()"/>
+			<s:Label text="全选"/> 			
+			<s:Label width="20"/>			
+			<!--分页组件所在地-->
+			<flipBar:PageBar  id="pagebar" rowConutOfPage="40" totalPageQuery="10" height="20"/>
+		</s:HGroup> 
+	</s:VGroup>
+</system:BasePage>

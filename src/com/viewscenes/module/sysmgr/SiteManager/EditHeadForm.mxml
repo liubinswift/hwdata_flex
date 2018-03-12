@@ -1,0 +1,496 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" close="close(event);"
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%"
+			   creationComplete="init();" 
+			   xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+			   xmlns:ip="com.viewscenes.utils.tools.*"
+			   xmlns:checkbox="com.viewscenes.global.comp.checkbox.*"
+			   xmlns:advancedComboBox="com.morcha4.ui.advancedComboBox.*"
+			   mouseDown="startDrag()"
+			   title="修改站点信息"
+			   mouseUp="stopDrag();">
+	<s:layout>
+		<s:FormItemLayout/>
+	</s:layout>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCException;
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.frame.system.AdvancedEvent;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+			import com.viewscenes.utils.StringTool;
+			import com.viewscenes.utils.timecomp.DateUtil;
+			
+			import mx.collections.ArrayCollection;
+			import mx.managers.PopUpManager;
+			[Bindable]
+			private var HeadObj:Object = {
+				"code":"",
+				"shortname":"",
+				"com_id":"2", 
+				"com_protocol":"",
+				"ip":"", 
+				"longitude":"", 
+				"latitude":"", 
+				"comphone":"",
+				"site":"",
+				"address":"",
+				"site_status":"",
+				"com_status":"",
+				"fault_status":"",
+				"station_name":"",
+				"descript":"",
+				"state":"",
+				"country":"",
+				"version":"",
+				"altitude":"",
+				"occur_time":DateUtil.date2str(new Date), 
+					"summertime_begin":DateUtil.date2str(new Date),
+					"summertime_end":DateUtil.date2str(new Date),
+					"ciraf":"",
+					"person":"",
+					"person_phone":"",
+					"principal":"",
+					"principal_phone":"",
+					"time_diff":"",
+					"default_language":"",
+					"x":"",
+					"y":"",
+					"url":"",
+					"is_delete":"",
+					"type_id":"",
+					"is_online":"",
+					"manufacturer":"",
+					"post":"",
+					"service_name":"",
+					"summertime":""};
+			[Bindable]
+			private var comArray:ArrayCollection = new ArrayCollection([{label:"宽带",code:"1"},{label:"拨号",code:"2"}]);
+			[Bindable]
+			private var isdel:ArrayCollection = new ArrayCollection([{label:"否",code:"0"},{label:"是",code:"1"}]);
+			[Bindable]
+			private var typeArray:ArrayCollection = new ArrayCollection([{label:"采集点",code:"101"},{label:"遥控站",code:"102"}]);
+			[Bindable]
+			private var lineArray:ArrayCollection = new ArrayCollection([{label:"不在线",code:"0"},{label:"在线",code:"1"}]);
+			[Bindable]
+			private var statusArr:ArrayCollection=new ArrayCollection([{label:"正常",value:"0"},{label:"异常",value:"1"}]);
+			//城市
+			[Bindable]
+			public var cityArr:ArrayCollection=new ArrayCollection();
+			//语言
+			[Bindable]
+			public var lanaguageArr:ArrayCollection = new ArrayCollection;
+			//大洲
+			[Bindable]
+			public var stateArr:ArrayCollection =new ArrayCollection();
+			//国家
+			[Bindable]
+			public var countryArr:ArrayCollection = new ArrayCollection;
+			//服务区
+			[Bindable]
+			public var serviceArr:ArrayCollection = new ArrayCollection;
+			
+			[Bindable]
+			private var manufacturerArr:ArrayCollection=new ArrayCollection();
+			[Bindable]
+			private var type101Arr:ArrayCollection=new ArrayCollection(["圣世祺_采集点_NI_V8","圣世祺_采集点_713_V8","圣世祺_采集点_FHD_V8","金石威视_采集点_VS_V8","中电22所_采集点_V8","度纬_采集点_AMFT_V8","泰顺_采集点_TS_V8"]);
+			[Bindable]
+			private var type102Arr:ArrayCollection=new ArrayCollection(["圣世祺_遥控站_NI_V8","圣世祺_遥控站_713_V8","圣世祺_遥控站_FHD_V8","金石威视_遥控站_VS_V8","中电22所_遥控站_V8","度纬_遥控站_AMFT_V8","泰顺_遥控站_TS_V8"]);
+			
+			private function init():void{	
+			}
+			public function setHead(obj:Object):void{
+				HeadObj = obj;
+				this.default_language.setText(HeadObj.default_language,"label");
+				var str:String=HeadObj.service_name;
+				if(str.indexOf(".")!=-1){
+					str=str.replace(".",",");
+				}			
+				this.service_name.setText(str,"label");
+				
+				if(HeadObj.type_id==101){
+					this.type_id.selectedIndex=0;
+				}else{
+					this.type_id.selectedIndex=1;
+				}
+				if(HeadObj.com_id=="1"){
+					this.com_id.selectedIndex=0;
+				}else{
+					this.com_id.selectedIndex=1;
+				}
+				principal_phone1.text=HeadObj.principal_phone.split(",")[0];
+				
+				principal_phone2.text=HeadObj.principal_phone.split(",")[1];
+				principal_phone3.text=HeadObj.principal_phone.split(",")[2];
+				getIndex();
+			}
+			private function getIndex():void{
+				var index:int=-1;
+				for(var i:int=0;i<stateArr.length;i++){
+					if(stateArr[i].state==HeadObj.state){
+						index= i;
+					}
+				}
+				state.selectedIndex=index;
+				index=-1;
+				for( i=0;i<countryArr.length;i++){
+					if(countryArr[i]==HeadObj.country){
+						index= i;
+					}
+				}
+				country.selectedIndex=index;
+				
+				
+				typeChange();
+				index=-1;
+				for(i=0;i<manufacturerArr.length;i++){
+					if(manufacturerArr[i]==HeadObj.manufacturer){
+						index=i;
+					}
+				}
+				manufacturer.selectedIndex=index;
+			}
+			private function updateHead():void{
+				if(isOK()){
+					return ;
+				}				
+				HeadObj.code=code.text;
+				HeadObj.shortname=shortname.text;
+				HeadObj.comphone=comphone.text;
+				HeadObj.url=url.text;
+				HeadObj.com_id=com_id.selectedItem.code;
+				HeadObj.com_protocol=com_protocol.text;
+				HeadObj.site_status=site_status.selectedItem.value;
+				//				HeadObj.com_status=com_status.text;
+				//				HeadObj.fault_status=fault_status.text;
+				//				HeadObj.is_delete=is_delete.selectedItem.code;
+				HeadObj.type_id=type_id.selectedItem.code;
+				HeadObj.is_online=is_online.selectedItem.code;
+				HeadObj.address=address.text;
+				HeadObj.longitude=longitude.text;
+				HeadObj.latitude=latitude.text;
+				HeadObj.altitude=altitude.text;
+				HeadObj.x=X.text;
+				HeadObj.y=Y.text;
+				HeadObj.person=person.text;
+				HeadObj.person_phone=person_phone.text;
+				HeadObj.principal=principal.text;
+				HeadObj.post=post.text
+				HeadObj.state=state.selectedItem.state;
+				HeadObj.country=country.selectedItem;
+				//				HeadObj.summertime_begin=summertime_begin.text;
+				//				HeadObj.summertime_end=summertime_end.text;
+				//				if(service_name.selectedIndex!=-1){
+				//					HeadObj.service_name=service_name.selectedItem.chinese_name;	
+				//				} 
+				HeadObj.service_name=service_name.getText("label");
+				HeadObj.ciraf=ciraf.text;
+				HeadObj.time_diff=time_diff.text;
+				if(manufacturer.selectedIndex!=-1){
+					HeadObj.manufacturer=manufacturer.selectedItem;
+				}				
+				HeadObj.version=version.text;
+				HeadObj.descript=descript.text;
+				if(type_id.selectedIndex!=-1){
+					HeadObj.type_id=type_id.selectedItem.code;
+				}				
+				HeadObj.site=HeadObj.shortname;
+				HeadObj.ip=ip.text;
+				HeadObj.principal_phone=principal_phone1.text+","+principal_phone2.text+","+principal_phone3.text;
+				HeadObj.default_language=default_language.getText("label");
+				//				MM.show(HeadObj.service_name);
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.sysmgr.dicManager.HeadendTab","updateHeadend",HeadObj,_updateHead,_updateHead));
+			}
+			private function isOK():Boolean{
+				if(code.text==null||code.text.length==0){
+					MM.show("站点代码不能为空！");
+					return true;
+				}
+				if(shortname.text==null||shortname.text.length==0){
+					MM.show("站点名称不能为空");
+					return true;
+				}
+				if(comphone.text==null||comphone.text.length==0){
+					MM.show("拨号电话不能为空");
+					return true;
+				}
+				if(state.selectedItem.state==null||state.selectedItem.state.length==0){
+					MM.show("大洲不能为空");
+					return true;
+				}
+				if(country.selectedItem==null||country.selectedItem.length==0){
+					MM.show("国家不能为空");
+					return true;
+				}
+				if(ip.text==null||ip.text.length==0){
+					MM.show("ip地址不能为空");
+					return true;
+				}
+				
+				
+				var regExp:RegExp=/^(\d+)(E?W?S?N?)(\d+)?$/;
+				if(longitude.text==null||longitude.text.length==0){
+					MM.show("经度不能为空");
+					return true;
+				}
+//				else{
+//					var str:String =longitude.text.toUpperCase();
+//					if(regExp.test(str)){
+//						if(str.indexOf("E")!=-1&&str.indexOf("W")!=-1){
+//							MM.show("经度输入格式不正确");
+//							return true;
+//						}
+//					}else{
+//						MM.show("经度输入格式不正确");
+//						return true;
+//					}
+//				}
+				if(latitude.text==null||latitude.text.length==0){
+					MM.show("纬度不能为空");
+					return true;
+				}
+//				else{
+//					var strr:String =latitude.text.toUpperCase();
+//					if(regExp.test(strr)){
+//						if(strr.indexOf("S")!=-1&&strr.indexOf("N")!=-1){
+//							MM.show("纬度输入格式不正确");
+//							return true;
+//						}
+//					}else{	
+//						MM.show("纬度输入格式不正确");
+//						return true;
+//					}
+//				}
+				var  reg:RegExp=/^(-?\d+)(\.\d+)?$/;
+				if(altitude.text!=""&&!reg.test(altitude.text)){
+					MM.show("海拔输入格式不正确");
+					return true;
+				}
+				if(time_diff.text!=""&&!reg.test(time_diff.text)){
+					MM.show("时差输入格式不正确");
+					return true;
+				}
+				return false;
+			}
+			public function _updateHead(arr:ArrayCollection):void{
+				
+				if (arr.length>0){
+					MM.show(RPCException(arr[0]).message);
+				}else{
+					MM.show("修改站点成功！");
+				}
+				this.dispatchEvent(new Event("Head_list_refresh"));
+				close(null);
+			}
+			
+			private function close(e:Event):void{				
+				PopUpManager.removePopUp(this);				
+			}
+			private function getCityArr():void{
+				var obj:Object=new Object();
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.sysmgr.dicManager.CityTab","getCityByCountry",obj,_getCityeArr,DataManager.showErrorMessageBack));
+			}
+			private function _getCityeArr(arr:ArrayCollection):void{
+				cityArr.removeAll();
+				cityArr=arr;
+			}
+			/**
+			 * 站点类型 控制制造厂商
+			 */
+			private function typeChange():void{
+				manufacturerArr.removeAll();
+				HeadObj.type_id=type_id.selectedItem.code;
+				if(type_id.selectedItem.code=="101"){
+					//facturer.visible=true;
+					//facturer.includeInLayout=true;
+					manufacturerArr=StringTool.clone(type101Arr);					
+				}else{
+					//facturer.visible=false;
+					//facturer.includeInLayout=false;
+					manufacturerArr=StringTool.clone(type102Arr);	
+				}
+				manufacturer.selectedIndex=0;
+			}
+			private function stateChange():void{				
+				var obj:Object=new Object();
+				obj.continents_id=state.selectedItem.state;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getCountryList",obj,resetCountoryArr,DataManager.showErrorMessageBack));
+			}
+			private function resetCountoryArr(arr:ArrayCollection):void{
+				countryArr.removeAll();
+				countryArr=arr;
+				default_language.setText("","label");
+			}
+			/**
+			 * 国家改变大洲
+			 */
+			private function countryChange():void{
+				var obj:Object=new Object();
+				obj.country=country.selectedItem;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getContinentsIdByCountry",obj,changeState,DataManager.showErrorMessageBack));
+			}
+			private function changeState(arr:ArrayCollection):void{
+				if(arr.length==0){
+					getCityArr();
+				}else{					
+					for(var num:int=0;num<8;num++){
+						if(stateArr[num].state!=""&&stateArr[num].state==arr[0]){							
+							state.selectedIndex=num;
+							break;
+						}
+					}
+					default_language.setText(arr[2].toString(),"label");	
+				}
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	
+	<s:HGroup width="100%"  horizontalAlign="right" verticalAlign="middle">
+		<s:VGroup width="100%" height="100%" horizontalAlign="right" verticalAlign="middle">
+			<s:Form>
+				<s:FormItem label="站点代码" height="20">
+					<s:TextInput id="code" text="{HeadObj.code}" restrict="a-z\A-Z\0-9" maxChars="20"  editable="false"/>
+				</s:FormItem>
+				<s:FormItem label="站点名称" height="20">
+					<s:TextInput id="shortname"    text="{HeadObj.shortname}"/>
+				</s:FormItem>								   
+				<s:FormItem label="拨号电话"  height="20">
+					<s:TextInput id="comphone" text="{HeadObj.comphone}" />
+				</s:FormItem>
+				<s:FormItem label="地址"  height="20">
+					<s:TextInput id="address" text="{HeadObj.address}"  />
+				</s:FormItem>
+				<s:FormItem label="经度" height="20">
+					<s:TextInput id="longitude" text="{HeadObj.longitude}"  />
+				</s:FormItem>
+				<s:FormItem label="纬度" height="20">
+					<s:TextInput id="latitude" text="{HeadObj.latitude}"  />
+				</s:FormItem>
+				<s:FormItem label="海拔"  height="20">
+					<s:TextInput id="altitude" text="{HeadObj.altitude}"  restrict="-.0-9\"/>
+				</s:FormItem>
+				<s:FormItem label="X"  height="20">
+					<s:TextInput id="X" text="{HeadObj.x}"  restrict="-,.0-9\"/>
+				</s:FormItem>
+				<s:FormItem label="Y"  height="20">
+					<s:TextInput id="Y" text="{HeadObj.y}"  restrict="-,.0-9\"/>
+				</s:FormItem>
+				<s:FormItem label="站点状态"  height="20">
+					<s:ComboBox id="site_status" dataProvider="{statusArr}" selectedIndex="{HeadObj.site_status}" />
+				</s:FormItem>
+				<!--s:FormItem label="通信状态"  height="20">
+				<s:TextInput id="com_status" text="{HeadObj.com_status}" />
+				</s:FormItem>
+				<s:FormItem label="失败状态"  height="20">
+				<s:TextInput id="fault_status" text="{HeadObj.fault_status}" />
+				</s:FormItem>
+				<s:FormItem label="是否删除" height="20">
+				<s:ComboBox id="is_delete" dataProvider="{isdel}" selectedIndex="{HeadObj.is_delete}" />
+				</s:FormItem-->
+				<s:FormItem label="站点类型" height="20">
+					<s:ComboBox id="type_id" dataProvider="{typeArray}"  change="typeChange()"  />
+				</s:FormItem>
+				<s:FormItem label="在线是否" height="20">					   
+					<s:ComboBox id="is_online" dataProvider="{lineArray}" selectedIndex="{HeadObj.is_online}" />
+				</s:FormItem>
+				<!--s:FormItem label="发射台名称"  height="20">
+				<s:TextInput id="station_name" text="{HeadObj.station_name}" change="{HeadObj.station_name=station_name.text}"/>
+				</s:FormItem-->				  							   
+			</s:Form>
+		</s:VGroup>
+		<s:VGroup width="100%" height="100%" horizontalAlign="right" verticalAlign="middle">
+			<s:Form>
+				<s:FormItem label="下发地址"  height="20">
+					<s:TextInput id="url" text="{HeadObj.url}" />
+				</s:FormItem>
+				<s:FormItem label="通信类型" height="20">
+					<s:ComboBox id="com_id" dataProvider="{comArray}" selectedIndex="{HeadObj.com_id}"   requireSelection="true"/>
+				</s:FormItem>
+				<s:FormItem label="通信协议" height="20">
+					<s:TextInput id="com_protocol" text="{HeadObj.com_protocol}" />
+				</s:FormItem>
+				<s:FormItem label="IP地址"  height="20">
+					<ip:IPComponent width="150" id="ip" text="{HeadObj.ip}"/>
+				</s:FormItem> 
+				<s:FormItem label="维护人"  height="20">
+					<s:TextInput id="person" text="{HeadObj.person}" />
+				</s:FormItem>
+				<s:FormItem label="维护人电话"  height="20">
+					<s:TextInput id="person_phone" text="{HeadObj.person_phone}" />
+				</s:FormItem>
+				<s:FormItem label="联系人"  height="20">
+					<s:TextInput id="principal" text="{HeadObj.principal}" />
+				</s:FormItem>
+				<s:FormItem label="联系人职务"  height="20">
+					<s:TextInput id="post" text="{HeadObj.post}" />
+				</s:FormItem>
+				<s:FormItem label="联系人办公电话"  height="20">
+					<s:TextInput id="principal_phone1"/>
+				</s:FormItem>
+				<s:FormItem label="联系人手机"  height="20">
+					<s:TextInput id="principal_phone2"/>
+				</s:FormItem>
+				<s:FormItem label="联系人家庭电话"  height="20">
+					<s:TextInput id="principal_phone3"/>
+				</s:FormItem>
+				
+			</s:Form>
+		</s:VGroup>
+		<s:VGroup width="100%" height="100%" horizontalAlign="right" verticalAlign="middle">
+			<s:Form>
+				<s:FormItem label="大洲"  height="20">
+					<!--s:TextInput id="state"  change="{HeadObj.state=state.text}"/-->
+					<s:ComboBox id="state" width="150" dataProvider="{stateArr}" selectedIndex="{HeadObj.state}" change="stateChange()" labelField="state_name" />
+				</s:FormItem>				   				   
+				<s:FormItem label="国家"  height="20">
+					<s:ComboBox  id="country" width="150" dataProvider="{countryArr}" change="countryChange()" labelField="contry"/>					   
+				</s:FormItem>			   
+				<s:FormItem label="是否有夏令时" height="20">
+					<s:ComboBox id="summertime" dataProvider="{isdel}" change="{HeadObj.summertime=summertime.selectedItem.code}" requireSelection="true" />
+				</s:FormItem>
+				<!--s:FormItem label="夏令开始时间"  height="20">
+				<timecomp:TimeNew id="summertime_begin"  TimeNewChanged="{HeadObj.summertime_begin=summertime_begin.text}"   text="" starttime="00:00:00"/>
+				</s:FormItem>
+				<s:FormItem label="夏令结束时间"  height="20">
+				<timecomp:TimeNew id="summertime_end"  TimeNewChanged="{HeadObj.summertime_end=summertime_end.text}" text="" starttime="23:59:59"/>
+				</s:FormItem-->
+				<s:FormItem label="服务区"  height="20">					   
+					<checkbox:CheckDropList id="service_name" width="150" dataProvider="{serviceArr}"    filedLabel="label"/>					   
+				</s:FormItem>
+				<s:FormItem label="默认语言"  height="20">
+					<checkbox:CheckDropList id="default_language" dataProvider="{lanaguageArr}"  filedLabel="label" />
+				</s:FormItem>
+				<s:FormItem label="CIRAF区"  height="20">
+					<s:TextInput id="ciraf" text="{HeadObj.ciraf}" />
+				</s:FormItem>			  
+				<s:FormItem label="时差"  height="20">
+					<s:TextInput id="time_diff" text="{HeadObj.time_diff}" />
+				</s:FormItem>				   
+				<s:FormItem label="制造厂商"  height="20" id="facturer">
+					<s:ComboBox id="manufacturer"  dataProvider="{manufacturerArr}"  />
+				</s:FormItem>
+				<s:FormItem label="版本"  height="20">
+					<s:TextInput id="version" text="{HeadObj.version}"  />
+				</s:FormItem>
+				<s:FormItem label="描述"  height="20">
+					<s:TextInput id="descript" text="{HeadObj.descript}" />
+				</s:FormItem>
+			</s:Form>
+			<s:FormItem width="216"  height="30">
+				<s:layout>
+					<s:HorizontalLayout/>
+				</s:layout>
+				<s:Button buttonMode="true" label="修改" click="updateHead();"/>
+				<s:Button buttonMode="true" label="关闭" click="close(event)"/>
+			</s:FormItem>
+		</s:VGroup>
+	</s:HGroup> 
+	
+</s:TitleWindow>

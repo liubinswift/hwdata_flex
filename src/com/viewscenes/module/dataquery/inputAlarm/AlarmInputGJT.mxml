@@ -1,0 +1,638 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 width="100%" height="100%"
+				 xmlns:system="com.morcha4.frame.system.*"
+				 xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+				 creationComplete="init();" xmlns:checkbox="com.viewscenes.global.comp.checkbox.*" xmlns:flipBar="com.viewscenes.utils.flipBar.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.frame.system.AdvancedEvent;
+			import com.morcha4.frame.system.EventBus;
+			import com.morcha4.util.RendererUtil;
+			import com.viewscenes.beans.RadioAbnormalBean;
+			import com.viewscenes.beans.runplan.RunplanBean;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.EventDeclare;
+			import com.viewscenes.global.comp.MM;
+			import com.viewscenes.global.comp.Runplan;
+			import com.viewscenes.utils.StringTool;
+			import com.viewscenes.utils.timecomp.DateUtil;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.ArrayList;
+			import mx.managers.PopUpManager;
+			
+			import spark.events.GridEvent;
+			
+			//国际台异态录入
+			private static var dataType:String = "1";	
+			//语言
+			[Bindable]
+			private var lanaguageArr:ArrayCollection = new ArrayCollection();
+			//发射台
+			[Bindable]
+			private var stationArr:ArrayCollection = new ArrayCollection();
+			//遥控站
+			[Bindable]
+			private var ykzArr:ArrayCollection = new ArrayCollection();
+			//收测方式
+			[Bindable]
+			private var receiveTypeArr:ArrayCollection = new ArrayCollection([{label:"全部",data:""},{label:"实时",data:"1"},{label:"录音",data:"2"}]);
+			//异态类型
+			[Bindable]
+			private var alarmTypeArr:ArrayCollection = new ArrayCollection([{label:"全部",data:""},{label:"停播",data:"1"},{label:"断续停播",data:"2"},{label:"空播",data:"3"},{label:"断续空播",data:"4"},{label:"杂音",data:"5"},{label:"失真",data:"6"},{label:"调幅度低",data:"7"},{label:"错播",data:"8"},{label:"早播",data:"9"},{label:"迟播",data:"10"},{label:"多播",data:"11"},{label:"少播",data:"12"},{label:"跑频",data:"13"},{label:"收不到",data:"14"},{label:"串扰",data:"15"},{label:"其他",data:"16"}]);
+			
+			//异态数据
+			[Bindable]
+			private var gjtDataArr:ArrayCollection = new ArrayCollection();
+			//当前选中的记录
+			[Bindable]
+			private var selectArr:ArrayCollection = new ArrayCollection();
+			
+			private function init():void{
+				queryStation();
+				getYkz();
+				getLanguageList();
+			}
+			
+			private function close(e:Event):void{
+				PopUpManager.removePopUp(this);
+				
+			}
+			
+			/**
+			 * 
+			 * 语言
+			 * */
+			private function getLanguageList():void{
+				var obj:Object = new Object;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getLanguageList",obj,getLanguageListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getLanguageListBack(arr:ArrayCollection):void{
+				lanaguageArr.removeAll();
+				lanaguageArr = arr;
+				lanaguageArr.addItemAt({language_name:"全部",language_id:null},0);
+				_language.selectedIndex = 0;
+			}
+			
+			
+			/**
+			 * 查询发射台信息
+			 * */
+			private function queryStation():void{
+				stationArr.removeAll();
+				stationArr = DataManager.stationBeanAll;
+				_station.selectedIndex = 0;
+			}
+			
+			
+			/**
+			 * 
+			 * 遥控站
+			 * */
+			private function getYkz():void{
+				var arr:ArrayCollection=DataManager.getHeadendByState("all","102",true);
+				for(var i:int = 0;i<arr.length; i++){
+					var obj:Object = arr.getItemAt(i);
+					
+					ykzArr.addItem({label:obj.shortname,value:obj.code});
+				}
+			}
+			
+			
+			/**
+			 * 打开运行图窗口
+			 */ 
+			private function showRunplanWindow():void{
+				EventBus.addEventListener(EventDeclare.RUNPLAN,runplanBack);
+				var runplan:Runplan = new Runplan();
+				var obj:Object = new Object();
+				obj.flag = "true";
+				obj.doQuery = "";
+				runplan.show("1",obj,this);
+			}
+			
+			private function runplanBack(e:AdvancedEvent):void{
+				var list:ArrayList  = e.data as ArrayList;
+				
+				var run:RunplanBean =list.getItemAt(0) as RunplanBean;
+				if (run != null){
+					_freq.text = run.freq;
+					_startTime.text = run.start_time+":00";
+					_endTime.text = run.end_time+":00";
+					//语言
+					_language.selectedIndex = StringTool.getSelectIndex(_language.dataProvider,"language_name",run.language_name);
+					
+					//发射台
+					_station.selectedIndex = StringTool.getSelectIndex(_station.dataProvider,"name",run.station_name);
+					
+					//功率
+					_power.text = run.power;
+					//机号
+					_transmiter_no.text = run.transmiter_no;
+					var codes:String=""
+					codes+=run.mon_area+","+run.xg_mon_area;
+					yhzHeadNames(codes);
+					setMark("");
+					_alarmStarttime.text= run.start_time+":00:00";
+					_alarmEndtime.text=run.end_time+":00:00";
+					_alarmType.selectedIndex=-1;
+				}
+				
+				
+			}
+			private function yhzHeadNames(str:String):void{
+				while(str.lastIndexOf(",")==str.length){
+					str=str.substring(0,str.length-1);
+				}
+				if(str.length==0){
+					return;
+				}
+				var codeArr:Array=str.split(",");
+				var codes:String ="";
+				var n:int=codeArr.length;
+				for(var i:int=0;i<n;i++){
+					if(codeArr[i].toString().length!=0){
+						if(i!=n-1){
+							codes+=codeArr[i]+",";
+						}else{
+							codes+=codeArr[i];
+						}						
+					}
+				}
+				_ykz.setText(codes,"value");
+				
+			}
+			private function check():Boolean{
+				
+				if (_freq.text == ""){
+					DataManager.showErrorMessage("频率不能为空");
+					return false;
+				}else if (!StringTool.checkFreq(_freq.text)){
+					DataManager.showErrorMessage("频率不正确");
+					return false;
+				}else if (_language.selectedIndex==0 || _language.selectedIndex == -1){
+					DataManager.showErrorMessage("请选择语言");
+					return false;
+					//				}else if (_endTime.text!="00:00"&&DateUtil.compareDateStr(DateUtil.date2str(new Date(),"date")+" "+_startTime.text,DateUtil.date2str(new Date(),"date")+" "+_endTime.text) != -1){
+					//					DataManager.showErrorMessage("播音结束时间要小于播音开始时间");
+					//					return false;
+				}else if (_station.selectedIndex == 0 || _station.selectedIndex == -1){
+					DataManager.showErrorMessage("请选择发射台");
+					return false;
+				}else if (_ykz.getText("label") =="" ||_ykz.getText("label").length ==0){
+					DataManager.showErrorMessage("请选择遥控站");
+					return false;
+				}else if (_alarmType.selectedIndex ==0 || _alarmType.selectedIndex == -1){
+					DataManager.showErrorMessage("请选择异态现象");
+					return false;
+					//				}else if (_alarmEndtime.text!="00:00:00"&&_alarmStarttime.text>_alarmEndtime.text){
+					//					DataManager.showErrorMessage("异态开始时间不能大于异态结束时间");
+					//					return false;
+				}
+				
+				return true;
+			}
+			
+			/**
+			 * 
+			 * 数据绑定
+			 */ 
+			private function bandData():RadioAbnormalBean{
+				var data:RadioAbnormalBean = new RadioAbnormalBean;
+				data.id = data_id.text;
+				data.type = dataType;
+				data.frequency = _freq.text;
+				data.language_id = _language.selectedItem.language_id;
+				data.language_name = _language.selectedItem.language_name;
+				data.station_id = _station.selectedItem.station_id;
+				data.station_name = _station.selectedItem.name;
+				data.starttime = "2000-01-01 "+_alarmStarttime.text;
+				if(_alarmEndtime.text<=_alarmStarttime.text){
+					data.endtime = "2000-01-02 "+_alarmEndtime.text
+				}else{
+					data.endtime = "2000-01-01 "+_alarmEndtime.text;
+				}
+				data.play_time = _startTime.text+"-"+_endTime.text;
+				data.power = _power.text;
+				data.remote_station = _ykz.getText("label");
+				data.tran_no = _transmiter_no.text;
+				data.abnormal_type = _alarmType.selectedItem.data;
+				data.abnormal_date = start_date.text;
+				data.end_date=end_date.text;
+				data.remark = mark.text;
+				//				data.get_type=get_type.selectedItem.data;
+				
+				return data;
+			}
+			
+			
+			/**
+			 * 添加异态
+			 */
+			private function addData():void{
+				if (check()){
+					//					if(get_type.selectedIndex==0){
+					//						MM.show("请选择收测方式");
+					//						return ;
+					//					}
+					var rabBean:RadioAbnormalBean= bandData();
+					rabBean.insert_person=DataManager.user.userName;
+					RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dataquery.alarminput.AlarmInput","addData",rabBean,addDataBack,DataManager.showErrorMessageBack));
+				}
+				
+			}
+			
+			private function addDataBack(str:String):void{
+				MM.show(str);
+				queryData();
+			}
+			
+			/**
+			 * 查询异态
+			 */ 
+			private function queryData():void{
+				selectArr.removeAll();
+				
+				data_id.text="";
+				var data:RadioAbnormalBean = bandData();
+				showTips(true,"正在查询,请稍候...");
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dataquery.alarminput.AlarmInput","queryData",data,queryDataBack,DataManager.showErrorMessageBack));
+				
+			}
+			
+			private function queryDataBack(arr:ArrayCollection):void{
+				var obj:Object = new Object();
+				if(arr.length == 0){
+					
+					obj.resultList = new ArrayCollection();
+					obj.resultTotal = 0;
+				}else{
+					obj.resultList=arr;
+					obj.resultTotal=obj.resultList.length
+				}
+				pagebar.m_queryProcess(obj,_queryDataBack);
+				
+			}
+			private function _queryDataBack(arr:ArrayCollection):void{
+				if (arr.length == 0)
+					showTips(true,"无查询结果...");
+				else
+					showTips(false,"");
+				gjtDataArr = arr;
+			}
+			
+			/**
+			 * 修改异态
+			 */
+			private function updateData():void{
+				if(data_id.text==""||data_id.text.length==0){
+					MM.show("没有需要修改的项!");
+					return;
+				}
+				if (check()){
+					var data:RadioAbnormalBean = bandData();
+					RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dataquery.alarminput.AlarmInput","updateData",data,updateDataBack,DataManager.showErrorMessageBack));
+				}
+			}
+			private function updateDataBack(str:String):void{
+				MM.show(str);
+				queryData();
+			}
+			
+			/**
+			 * 删除异态
+			 */
+			private function delData():void{
+				if (!selectArr.length>0){
+					MM.show("请选择所要删除的异态信息!");
+					return 
+				}
+				MM.show("确定要删除选中的异态信息吗？","删除异态",'',confirmDel,true,null,null);
+			}
+			
+			private function confirmDel():void{
+				if (selectArr.length>0)
+					
+					RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dataquery.alarminput.AlarmInput","delData",selectArr,confirmDelBack,DataManager.showErrorMessageBack));
+			}
+			
+			
+			private function confirmDelBack(str:String):void{
+				MM.show(str);
+				queryData();
+				selectArr.removeAll();
+			}
+			
+			/**
+			 * 校对异态
+			 */
+			private function proofreadData():void{
+				if (!selectArr.length>0){
+					MM.show("请选择所要校对的异态信息!");
+					return 
+				}
+				var obj:Object=new Object();
+				obj.selectArr=selectArr;
+				obj.proof_person=DataManager.user.userName;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dataquery.alarminput.AlarmInput","proofreadData",obj,confirmDelBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function proofreadDataBack(str:String):void{
+				MM.show(str);
+				queryData();
+				selectArr.removeAll();
+			}
+			/**
+			 * 审核异态
+			 */
+			private function auditData():void{
+				if (!selectArr.length>0){
+					MM.show("请选择所要审核的异态信息!");
+					return 
+				}
+				var obj:Object=new Object();
+				obj.selectArr=selectArr;
+				obj.audit_person=DataManager.user.userName;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dataquery.alarminput.AlarmInput","auditData",obj,auditDataBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function auditDataBack(str:String):void{
+				MM.show(str);
+				queryData();
+				selectArr.removeAll();
+			}
+			
+			/**
+			 * 异态时长计算
+			 */
+			private function calcabnormalTime(item:Object,gc:GridColumn):String{
+				return DateUtil.timeDiff(DateUtil.str2date(item.starttime),DateUtil.str2date(item.endtime));
+				//				var num:Number=(int)(time*100)/100.0;
+				//				if((time-num)>=0.005){
+				//					num+=0.01;
+				//				}
+				//				return Math.round((time/60)).toString();
+				
+			}
+			
+			private function abnormalTypeLabel(item:Object,gc:GridColumn):String{
+				switch  (item.abnormal_type){
+					case "1":return "停播";
+					case "2":return "断续停播";
+					case "3":return "空播";
+					case "4":return "断续空播";
+					case "5":return "杂音";
+					case "6":return "失真";
+					case "7":return "调幅度低";
+					case "8":return "错播";
+					case "9":return "早播";
+					case "10":return "迟播";
+					case "11":return "多播";
+					case "12":return "少播";
+					case "13":return "跑频";
+					case "14":return "收不到";
+					case "15":return "串扰";
+					case "16":return "其他";
+					default: "未知";
+						
+				}
+				return "未知";
+			}
+			
+			private function getTypeLabel(item:Object,gc:GridColumn):String{
+				if (item.get_type == "1"){
+					return "实时";
+				}else {
+					return "录音";
+				}
+			}
+			
+			private function abnormal_dateLabel(item:Object,gc:GridColumn):String{
+				if ( item.abnormal_date.length>=10){
+					return item.abnormal_date.substr(0,10);
+				}
+				
+				return item.abnormal_date;
+			}
+			
+			private function starttimeLabel(item:Object,gc:GridColumn):String{
+				if ( item.starttime.length>=10){
+					return item.starttime.substr(11,item.starttime.length)+"到"+item.endtime.substr(11,item.endtime.length);
+				}
+				
+				return item.starttime;
+			}
+			
+			private function proofreadLabel(item:Object,gc:GridColumn):String{
+				if ( item.is_proofread=="0" || item.is_proofread== ""){
+					return "未校对";
+				}else{
+					return "已校对";
+				}
+				
+				
+			}
+			
+			private function auditLabel(item:Object,gc:GridColumn):String{
+				if ( item.is_audit=="0" || item.is_audit=="" ){
+					return "未审核";
+				}else{
+					return "已审核";
+				}
+				
+				
+			}
+			
+			//选择点中后执行的方法
+			private function changeSelect(obj:Object):void{
+				var data:RadioAbnormalBean = obj.data as RadioAbnormalBean;
+				if(data.isSelected=="true"){
+					selectArr.addItem(data);
+				}else{
+					//if (selectArr.contains(data))
+						selectArr.removeItemAt(selectArr.getItemIndex(data));
+				}
+				
+			}
+			
+			/**
+			 * 点击datagrid某行数据触发的方法
+			 * */
+			private function onGridClick(event:GridEvent):void{
+				if(grid.dataProvider.length<=0){
+					return;
+				}else{
+					if(event.columnIndex==0||event.item==null){
+						return;
+					}else{
+						
+						data_id.text = grid.selectedItem.id;
+						_freq.text = grid.selectedItem.frequency;
+						//语言
+						_language.selectedIndex = StringTool.getSelectIndex(_language.dataProvider,"language_id",grid.selectedItem.language_id);
+						//发射台
+						_station.selectedIndex = StringTool.getSelectIndex(_station.dataProvider,"name",grid.selectedItem.station_name);
+						
+						_startTime.text = grid.selectedItem.play_time.split("-")[0];
+						_endTime.text = grid.selectedItem.play_time.split("-")[1];
+						_power.text = grid.selectedItem.power;
+						_transmiter_no.text = grid.selectedItem.tran_no;
+						_ykz.setText(grid.selectedItem.remote_station,"label");
+						//						_receiveType.selectedIndex = StringTool.getSelectIndex(_receiveType.dataProvider,"data",grid.selectedItem.get_type);
+						_alarmType.selectedIndex = StringTool.getSelectIndex(_alarmType.dataProvider,"data",grid.selectedItem.abnormal_type);
+						
+						start_date.text =grid.selectedItem.abnormal_date.substring(0,10);
+						_alarmStarttime.text =grid.selectedItem.starttime.substring(11,19);
+						_alarmEndtime.text = grid.selectedItem.endtime.substring(11,19);
+						setMark(grid.selectedItem.remark);
+						//						get_type.selectedIndex=StringTool.getSelectIndex(get_type.dataProvider,"data",grid.selectedItem.get_type);
+					}
+					
+				}
+				
+			}
+			private  function getSelectIndex(station:String):int{				
+				for(var i:int=0;i<ykzArr.length;i++){
+					if(station.indexOf(ykzArr[i].shortname)!=-1){
+						return i;
+					}
+				}			
+				return 0;
+			}
+			
+			private function reset():void{
+				_freq.text = "";
+				_language.selectedIndex = 0;
+				_station.selectedIndex = 0;
+				_startTime.text = "00:00";
+				_endTime.text = "23:59";
+				_power.text = "";
+				_transmiter_no.text = "";
+				_ykz.setText("","label");
+				//				_receiveType.selectedIndex = 0;
+				_alarmType.selectedIndex = 0;
+				start_date.text = DateUtil.date2str(new Date()).substr(0,10);
+				end_date.text=DateUtil.date2str(new Date()).substr(0,10);
+				_alarmStarttime.text = "00:00:00";
+				_alarmEndtime.text = "23:59:59";
+				setMark("");
+			}
+			
+			/**
+			 * 查询时提示信息
+			 */ 
+			private function showTips(b:Boolean,msg:String=""):void{
+				
+				if (b == true){
+					clew_label.y = grid.y+50;
+					clew_label.visible = true;
+					clew_label.includeInLayout = true;
+					clew_label.text = msg;//"正在查询,请稍候...";
+				}else{
+					clew_label.visible = false
+					clew_label.includeInLayout = false;
+					clew_label.text = "";
+				}
+			}
+			private function openNote():void{
+				var pop:NoteForm=NoteForm(PopUpManager.createPopUp(this,NoteForm,true));
+				pop.setNote(mark.text);
+				pop.parenter=this;
+				PopUpManager.centerPopUp(pop);
+			}
+			public function setMark(str:String):void{
+				mark.text=str;
+				var markWidth:int=mark.measureText(str).width;
+				if(markWidth>mark.width){
+					mark.toolTip=str;
+				}else{
+					mark.toolTip="";
+				}
+			}
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%" verticalAlign="top">
+		<s:VGroup width="100%"  verticalAlign="top">
+			<s:HGroup width="100%"  height="100%" horizontalAlign="left"  verticalAlign="middle">
+				<s:Button buttonMode="true" label="从运行图提取" click="showRunplanWindow();"/>
+				<!--只为存放修改时的记录ID-->
+				<s:TextInput id="data_id" visible="false" includeInLayout="false"/>
+				<s:Label text="频率:"/><s:TextInput width="60" id="_freq" />
+				<s:Label text="语言:"/><s:ComboBox id="_language" width="80" dataProvider="{lanaguageArr}" labelField="language_name"/>
+				<s:Label text="遥控站:"/><checkbox:CheckDropList id="_ykz" dataProvider="{ykzArr}"  filedLabel="label" width="120"/>					
+				<s:Label text="发射台:"/><s:DropDownList  id="_station" width="100"  dataProvider="{stationArr}" selectedIndex="0" requireSelection="true" labelField="name"/>
+				<s:Label text="功率:"/><s:TextInput width="80" id="_power"/>
+				<s:Label text="机号:"/><s:TextInput width="80" id="_transmiter_no"/>
+			</s:HGroup>
+			<mx:HRule width="100%" strokeWidth="1" strokeColor="#a0a0a0" shadowColor="#000000" />
+			<s:HGroup width="100%"  height="100%" horizontalAlign="left"  verticalAlign="middle">											
+				<s:Label text="异态现象:"/><s:DropDownList width="120" id="_alarmType" selectedIndex="0" dataProvider="{alarmTypeArr}"/>
+				<s:Label text="播音时间:"/><timecomp:TimeNew dateDisplay="timenew" id="_startTime" /><s:Label text="到"/><timecomp:TimeNew dateDisplay="timenew" id="_endTime"/>
+				<s:Label text="异态日期:"/><timecomp:TimeNew dateDisplay="date" id="start_date"/><s:Label text="到" /><timecomp:TimeNew dateDisplay="date" id="end_date"/>
+				<s:Label text="异态时间:"/><timecomp:TimeNew id="_alarmStarttime" dateDisplay="time" /><s:Label text="到"/><timecomp:TimeNew id="_alarmEndtime" dateDisplay="time"/>
+				<!--s:Label text="收测方式:"/><s:ComboBox id="get_type" dataProvider="{receiveTypeArr}" requireSelection="true" width="60"/-->
+			</s:HGroup>
+			<mx:HRule width="100%" strokeWidth="1" strokeColor="#a0a0a0" shadowColor="#000000" />
+			
+			<s:HGroup width="100%"  height="100%" horizontalAlign="left"  verticalAlign="middle">
+				<s:Label text="备注:"/><s:TextInput  width="150" id="mark" editable="false" />	
+				<s:Button label="录入备注" click="openNote()"/>
+				<s:HGroup width="100%"  height="100%" horizontalAlign="right"  verticalAlign="middle">			
+					<s:Button buttonMode="true" label="查询" click="queryData()"/>
+					<s:Button buttonMode="true" label="录入" click="addData()"/>
+					<s:Button buttonMode="true" label="修改" click="updateData()"/>
+					<s:Button buttonMode="true" label="删除" click="delData()"/>
+					<s:Button buttonMode="true" label="重置" click="reset()"/>
+					<s:Button buttonMode="true" label="校对" click="proofreadData()"/>
+					<s:Button buttonMode="true" label="审核" click="auditData()"/>					
+				</s:HGroup>
+			</s:HGroup>
+			
+		</s:VGroup>
+		<s:VGroup width="100%" height="100%">
+			<mx:Canvas width="100%" height="100%">
+				<s:DataGrid width="100%" height="100%" id="grid" dataProvider="{gjtDataArr}" textAlign="center" gridClick="onGridClick(event)"  showDataTips="true">
+					<s:columns>
+						<s:ArrayCollection>
+							
+							<s:GridColumn headerText="选择" dataField="data_id" itemRenderer="{RendererUtil.getCheckBoxRenderer(changeSelect)}" width="40"/>
+							<s:GridColumn headerText="异态日期" width="80" dataField="abnormal_date" labelFunction="abnormal_dateLabel" minWidth="60" />
+							<s:GridColumn headerText="发射台" dataField="station_name"  minWidth="60"/>
+							<s:GridColumn headerText="机号" dataField="tran_no" minWidth="60"/>
+							
+							<s:GridColumn headerText="频率(kHz)" dataField="frequency" minWidth="60"/>
+							<s:GridColumn headerText="功率 (KW)"  dataField="power" minWidth="60" />
+							<s:GridColumn headerText="语言"  dataField="language_name" minWidth="60"/>
+							<s:GridColumn headerText="播音时间"  dataField="play_time" minWidth="60"/>
+							<s:GridColumn headerText="异态发生时间"   labelFunction="starttimeLabel" minWidth="60" />
+							
+							<s:GridColumn headerText="收测遥控站"  dataField="remote_station" minWidth="60" />
+							<s:GridColumn headerText="异态现象"  dataField="abnormal_type" labelFunction="abnormalTypeLabel" minWidth="60"/>
+							<s:GridColumn headerText="异态时间"  labelFunction="calcabnormalTime" minWidth="60"/>
+							
+							<!--s:GridColumn headerText="收测方式"  dataField="get_type" labelFunction="getTypeLabel"/-->
+							<s:GridColumn headerText="录入人"  dataField="insert_person"  minWidth="60"/>
+							<!--s:GridColumn headerText="校对"  dataField="is_proofread" labelFunction="proofreadLabel" minWidth="60"/-->
+							<s:GridColumn headerText="校对人"  dataField="proof_person"  minWidth="60"/>
+							<!--s:GridColumn headerText="审核"  dataField="is_audit" labelFunction="auditLabel" minWidth="60"/-->
+							<s:GridColumn headerText="审核人"  dataField="audit_person"  minWidth="60"/>
+						</s:ArrayCollection>
+					</s:columns>
+				</s:DataGrid>
+				<s:Label text="正在查询，请稍候..." color="0x000000" id="clew_label" y="{grid.columnHeaderGroup.height+10}" width="100%" textAlign="center"  visible="false" includeInLayout="false" />
+			</mx:Canvas>
+			<flipBar:PageBar  id="pagebar" rowConutOfPage="30" totalPageQuery="10" height="20"/>
+		</s:VGroup>
+	</s:VGroup>
+	
+</system:BasePage>

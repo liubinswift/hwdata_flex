@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 xmlns:system="com.morcha4.frame.system.*"
+				 width="100%" height="100%" 
+				 creationComplete="init()"
+				 xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+				 xmlns:global="com.viewscenes.global.*" 
+				 xmlns:flipBar="com.viewscenes.utils.flipBar.*" xmlns:checkbox="com.viewscenes.global.comp.checkbox.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.utils.ExportExcel;
+			[Bindable]
+			private var headendArr:ArrayCollection=new ArrayCollection();
+			[Bindable]
+			public var dataArray:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			private var istype:ArrayCollection = new ArrayCollection([{label:"按发射台统计",code:"0"},{label:"按频点统计",code:"1"}]);
+			
+			
+			protected function init():void
+			{
+				// TODO Auto-generated method stub
+
+				getHeadend();
+			}
+			private function getHeadend():void{
+				var arr:ArrayCollection=DataManager.getHeadendByState("all","102",true);
+				for(var i:int=0;i<arr.length;i++){
+					var obj:Object = new Object();
+					obj.label = arr.getItemAt(i).shortname;
+					obj.value = arr.getItemAt(i).code;
+					headendArr.addItem(obj);
+				}
+			}
+			protected function Handle():void
+			{
+				this.queryBtn.enabled=false;
+				con_clewlabel(clew_label,true,'正在统计，请稍候...');
+				var obj:Object=new Object();
+				obj.date=this.oStartValidDate.text;
+				obj.head_type="102";
+				obj.type=this.type.selectedItem.code;
+				obj.headnames=headend.getText("label");
+				pagebar.m_sendCmd(new RORequestParam("com.viewscenes.web.statistics.SpectrumDataStatistics","spectrumDataStatistics",obj,spectrumDataStatisticsback,DataManager.showErrorMessageBack));
+				
+			}
+			private function spectrumDataStatisticsback(obj:ArrayCollection):void
+			{
+		
+				this.queryBtn.enabled=true;
+				con_clewlabel(clew_label,false);
+				dataArray.removeAll();
+				dataArray=obj;	
+				if(obj.length==0){
+					
+					con_clewlabel(clew_label,true,"无统计数据！");
+				}
+			}
+			/**
+			 * 控制datagrid的提示框是否显示，以及显示内容
+			 * author:cht
+			 * **/
+			public function con_clewlabel(_component:Label,_visible:Boolean,_label:String="")
+			{
+				_component.visible=_visible;
+				_component.includeInLayout=_visible;
+				_component.text=_label;
+			}
+			function doExcel():void{
+				ExportExcel.exportToExcelByDg(result,pagebar.resutlList,"遥控站频谱汇总("+oStartValidDate.text+")");
+
+			}
+			public function  typeChange():void
+			{
+				if(type.selectedItem.code=="0")
+				{
+					changeLabel.headerText="频道";
+					changeLabel.dataField="station_name";
+				}else
+				{
+					changeLabel.headerText="频率";
+					changeLabel.dataField="freq";
+				}
+			}
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%">
+	<s:HGroup width="100%"   verticalAlign="middle" paddingLeft="10">
+		<s:Label text="统计时间"/>
+		<timecomp:TimeNew  id="oStartValidDate" dateDisplay="date" />
+		<s:Spacer width="10"/>
+		<s:Label text="收测站点:" />
+		<checkbox:CheckDropList id="headend" dataProvider="{headendArr}" rowCount="15" />
+		<s:Spacer width="10"/>
+		<s:Label text="统计方式:" />
+		<s:ComboBox id="type"  dataProvider="{istype}"   change="typeChange()" requireSelection="true" height="25" />
+		
+		<s:Spacer width="50"/>
+		<s:Button buttonMode="true" id="queryBtn" label="统计"    click="Handle()" />	
+		<s:Spacer width="10"/>
+		<s:Button buttonMode="true" id="Btn" label="导出"    click="doExcel()" />	
+	</s:HGroup>
+		<s:VGroup width="100%" height="100%">
+			<s:DataGrid width="100%" height="26"   showDataTips="true"  >
+				<s:columns>
+					<s:ArrayCollection>
+						<s:GridColumn headerText="北京时间" />
+						
+					</s:ArrayCollection>
+				</s:columns>
+			</s:DataGrid>
+			<s:VGroup width="100%" height="100%">
+				<mx:Canvas width="100%" height="100%">
+				<s:DataGrid width="100%" height="100%" id="result"  showDataTips="true" dataProvider="{dataArray}" >
+					<s:columns>
+						<s:ArrayCollection>
+							<s:GridColumn headerText="频道" id="changeLabel" dataField="station_name" width="100"  />
+							<s:GridColumn headerText="0" dataField="time0"  width="140"/>
+							<s:GridColumn headerText="1" dataField="time1"  width="140"/>
+							<s:GridColumn headerText="2" dataField="time2"  width="140"/>
+							<s:GridColumn headerText="3"  dataField="time3"  width="140"/>
+							
+							<s:GridColumn headerText="4"  dataField="time4" width="140"/>
+							<s:GridColumn headerText="5"  dataField="time5"  width="140"/>
+							<s:GridColumn headerText="6"  dataField="time6"  width="140"/>
+							<s:GridColumn headerText="7"  dataField="time7"   width="140"/>
+							<s:GridColumn headerText="8"  dataField="time8"  width="140"/>
+							<s:GridColumn headerText="9"  dataField="time9"  width="140"/>
+							<s:GridColumn headerText="10"  dataField="time10"  width="140"/>
+							<s:GridColumn headerText="11"  dataField="time11"  width="140"/>
+							<s:GridColumn headerText="12"  dataField="time12"  width="140"/>
+							<s:GridColumn headerText="13"  dataField="time13"  width="140"/>
+							<s:GridColumn headerText="14"  dataField="time14"  width="140"/>
+							<s:GridColumn headerText="15"  dataField="time15"  width="140"/>
+							<s:GridColumn headerText="16"  dataField="time16"  width="140"/>
+							<s:GridColumn headerText="17"  dataField="time17"  width="140"/>
+							<s:GridColumn headerText="18"  dataField="time18"  width="140"/>
+							<s:GridColumn headerText="19"  dataField="time19"  width="140"/>
+							<s:GridColumn headerText="20"  dataField="time20"  width="140"/>
+							<s:GridColumn headerText="21"  dataField="time21"  width="140"/>
+							<s:GridColumn headerText="22"  dataField="time22"  width="140"/>
+							<s:GridColumn headerText="23"  dataField="time23"  width="140"/>
+							
+							
+						</s:ArrayCollection>
+					</s:columns>
+				</s:DataGrid>
+					
+				<s:Label text="正在统计，请稍候..." color="0x000000" id="clew_label" y="30"  width="100%" textAlign="center"  visible="false" includeInLayout="false" />				
+				</mx:Canvas>
+			</s:VGroup>
+		
+		
+			<!--分页组件所在地-->
+			<flipBar:PageBar  id="pagebar" rowConutOfPage="30" totalPageQuery="10" height="20"/>
+		</s:VGroup>
+	</s:VGroup>
+</system:BasePage>

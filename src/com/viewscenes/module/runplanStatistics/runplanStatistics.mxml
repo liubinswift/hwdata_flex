@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:system="com.morcha4.frame.system.*" width="100%" height="100%" xmlns:runplanStatistics="com.viewscenes.module.runplanStatistics.*">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.viewscenes.module.runplanStatistics.gjtRunplanStatistics;
+			
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%" horizontalAlign="center" verticalAlign="middle">
+		<s:TabBar dataProvider="{vs}"/>
+		<mx:ViewStack id="vs" width="100%" height="100%" creationPolicy="all">
+			<s:NavigatorContent id="gjtRunplan" label="国际台运行图"> 
+				<runplanStatistics:gjtRunplanStatistics id="gjt"/>
+			</s:NavigatorContent> 
+			<s:NavigatorContent id="hwRunplan" label="海外落地运行图"> 
+			</s:NavigatorContent>
+			<s:NavigatorContent id="wgtRunplan" label="外国台运行图"> 
+			</s:NavigatorContent>
+			<s:NavigatorContent id="gjdlFreq" label="国际电联频率表"> 
+			</s:NavigatorContent>
+		</mx:ViewStack>
+	</s:VGroup>
+	
+</system:BasePage>

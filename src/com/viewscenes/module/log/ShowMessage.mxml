@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow close="onClose()" title="通知" 
+			   xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" 
+			   width="100%"	
+			   height="100%"
+			   fontSize="12"
+			   
+			   mouseDown="startDrag()"
+			   mouseUp="stopDrag();"    
+			     
+	>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.viewscenes.beans.log.NotificationBean;
+			import com.viewscenes.global.DataManager;
+			
+			import mx.collections.ArrayCollection;
+	
+			
+			public var list:ArrayCollection =new ArrayCollection();
+			
+			public var flag:int =0;//记录点击的条数。
+			private function onClose():void{						
+				this.visible=false;
+				if(list!=null)
+				{
+					this.clickDeleteChooseComfirm(list);
+				}
+			}
+			
+		
+			private function clickDeleteChooseComfirm(list:ArrayCollection):void{
+				
+				for(var i:int ;i<list.length;i++)
+				{
+					var bean:NotificationBean=list.getItemAt(i) as NotificationBean;
+					bean.check_userid=DataManager.user.userId;
+					
+				}
+			
+				var request:RORequestParam = new RORequestParam("com.viewscenes.web.log.Log","updateLogList",list,clickDeleteChooseProcess,DataManager.showErrorMessageBack);
+				RPCManager.sendCmd(request); 
+				
+				
+				
+			}
+			private function clickDeleteChooseProcess(retStr:String):void{
+				
+				
+			}
+			public function setBean(list:ArrayCollection):void
+			{
+				// TODO Auto-generated method stub
+				this.list=list;
+				if(list!=null)
+				{
+					if(list.length==1)
+					{
+						
+						this.down.enabled=false;
+					}
+					this.up.enabled=false;
+					var bean:NotificationBean=list.getItemAt(0) as NotificationBean;
+					this.desc.text="发送人："+bean.from_username+" \n开始时间："+bean.start_time+"\n结束时间："+bean.end_time+"\n详细：\n"+bean.description;
+					
+				}
+			}
+			
+			protected function up_clickHandler(str:String):void
+			{
+				// TODO Auto-generated method stub
+				if(str=='up')
+				{
+					flag=flag-1;
+					if(flag<0)
+					{
+						this.up.enabled=false;
+						flag=0;	
+					}
+					this.down.enabled=true;
+					if(flag==0)
+					{
+						this.up.enabled=false;
+					}
+					var bean:NotificationBean=list.getItemAt(flag) as NotificationBean;
+					this.desc.text="发送人："+bean.from_username+" \n开始时间："+bean.start_time+"\n结束时间："+bean.end_time+"\n详细：\n"+bean.description;
+					
+				}else
+				{
+					flag=flag+1;
+					if(flag==list.length-1)
+					{
+						
+						this.down.enabled=false;
+						flag=list.length-1;
+					}
+					this.up.enabled=true;
+					var bean:NotificationBean=list.getItemAt(flag) as NotificationBean;
+					this.desc.text="发送人："+bean.from_username+" \n开始时间："+bean.start_time+"\n结束时间："+bean.end_time+"\n详细：\n"+bean.description;
+						
+				}
+				
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<s:VGroup  width="100%" height="100%">
+			<s:TextArea id="desc"  editable="false"  color="#000000" textAlign="left" width="100%" height="100%">	
+			</s:TextArea>
+		<s:HGroup  width="100%"  horizontalAlign="right">
+			<s:Button id="up"  label="上一条"   click="up_clickHandler('up')"/>
+			<s:Button id="down"  label="下一条" click="up_clickHandler('down')" />
+		</s:HGroup>
+	
+	</s:VGroup>	
+</s:TitleWindow>		

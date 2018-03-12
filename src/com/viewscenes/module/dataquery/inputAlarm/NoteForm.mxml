@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" close="close(event);"
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="400" height="300"
+			   creationComplete="init();" 
+			   xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+			   xmlns:ip="com.viewscenes.utils.tools.*"
+			   mouseDown="startDrag()"
+			   title="备注信息"
+			   mouseUp="stopDrag();">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import mx.managers.PopUpManager;
+			[Bindable]
+			public var parenter:Object=null;
+			private function init():void{
+			}
+			public function setNote(str:String):void{
+				note.text=str;
+			}
+			private function addNote():void{			
+				if(parenter!=null){
+					parenter.setMark(note.text);
+				}
+				close(null);
+			}
+			private function close(event:Event):void{
+				PopUpManager.removePopUp(this);
+			}
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%">
+		<s:Spacer width="100%" height="5"/>
+		<s:TextArea width="100%" height="100%" id="note" />
+		<s:HGroup width="100%"  horizontalAlign="center">
+			<s:Button label="录入" click="addNote()"/>
+			<s:Button label="取消" click="close(event)"/>
+		</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

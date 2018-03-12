@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 xmlns:system="com.morcha4.frame.system.*" 
+				 xmlns:flipBar="com.viewscenes.utils.flipBar.*"
+				 xmlns:tools="com.viewscenes.utils.tools.*"
+				 creationComplete="init()"
+				 width="100%" height="100%">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCException;
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.util.RendererUtil;
+			import com.viewscenes.beans.dicManager.StationBean;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.SystemInit;
+			import com.viewscenes.global.comp.MM;
+			
+			import mx.managers.PopUpManager;
+			[Bindable]
+			private var stationArr:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			private var addArr:ArrayCollection = new ArrayCollection();//临时存放新增的发射台信息
+			[Bindable]
+			private var updateArr:ArrayCollection = new ArrayCollection();//临时存放修改的发射台信息
+			
+			private function addStation():void{
+				var pop:AddStationForm=AddStationForm(PopUpManager.createPopUp(this,AddStationForm,true));
+				PopUpManager.centerPopUp(pop);
+				pop.addEventListener("station_refrash",refrashStation);
+			}
+			private function refrashStation(event:Event):void{
+				var st:SystemInit =new SystemInit();
+				st.getConfigData();
+				queryStation();
+			}
+			private function init():void{
+			}
+			/**
+			 * 查询发射台信息
+			 * */
+			private function queryStation():void{
+				selectedCounts=0;
+				stationArr.removeAll();
+				clew_label.text="正在查询，请稍候...";
+				clew_label.visible=true;
+				clew_label.includeInLayout=true;
+				var bean:StationBean = new StationBean();
+				if(station_name.text!=""){
+					bean.name=station_name.text;
+				}
+				var request:RORequestParam =new RORequestParam("com.viewscenes.web.dicManager.StationManager","queryStation",bean,queryStationBack,DataManager.showErrorMessageBack);
+				pagebar.m_sendCmd(request);
+			}
+			
+			private function queryStationBack(arr:ArrayCollection):void{
+				if(arr.length==0){
+					clew_label.text="无相关查询数据";
+				}else{
+					clew_label.visible=false;
+					clew_label.includeInLayout=false;
+					stationArr=arr;
+				}
+			}
+			private function updateStation(obj:Object):void{
+				openEditForm(obj.data);
+				
+			}
+			private function openEditForm(obj:Object):void{
+				var pop:EditStationForm=EditStationForm(PopUpManager.createPopUp(this,EditStationForm,true));
+				pop.setStationBean(obj);
+				PopUpManager.centerPopUp(pop);
+				pop.addEventListener("station_refrash",refrashStation);
+			}
+			
+			private function updateStationBack(res:String):void{
+				MM.show(res);
+				queryStation();
+			}
+			private function  validPsw(bean:StationBean):Boolean{
+				var regExp:RegExp=/^(\d+)(E?W?S?N?\d+)?$/;
+				if(bean.longitude!=""){
+					var str:String =bean.longitude.toUpperCase();
+					if(regExp.test(str)){
+						if(str.indexOf("E")!=-1&&str.indexOf("W")!=-1){
+							MM.show("经度输入格式不正确");
+							return true;
+						}
+					}else{
+						MM.show("经度输入格式不正确");
+						return true;
+					}
+				}
+				if(bean.latitude!=""){
+					var str:String =bean.latitude.toUpperCase();
+					if(regExp.test(str)){
+						if(str.indexOf("S")!=-1&&str.indexOf("N")!=-1){
+							MM.show("纬度输入格式不正确");
+							return true;
+						}
+					}else{	
+						MM.show("纬度输入格式不正确");
+						return true;
+					}
+				}
+				return false;
+			}
+			var ids:String="";
+			private function delStation():void{
+				ids="";
+				var flag:Boolean=false;
+				for(var i:int=0;i<stationArr.length;i++){
+					if(stationArr.getItemAt(i).isSelected=="true"){
+						flag=true;
+						if(stationArr.getItemAt(i).station_id!=null&&stationArr.getItemAt(i).station_id.length!=0){
+							ids+=stationArr.getItemAt(i).station_id+",";
+						}
+					}
+				}
+				
+				if(flag){
+					MM.show("您确定删除吗?","删除确认",'',delStationChoose,true,null,null);
+				}
+				else{
+					MM.show("请选择要删除的信息","警告");
+					return;
+				}
+			}
+			/**
+			 * 删除发射台信息
+			 * */
+			private function delStationChoose():void{
+				var obj:Object = new Object();
+				if(ids.length<=0){
+					MM.show("成功删除发射台信息！","","",queryStation);
+				}else{
+					obj.ids=ids.substring(0,ids.length-1);
+					RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dicManager.StationManager","delStation",obj,delStationBack,DataManager.showErrorMessageBack));
+				}
+			}
+			
+			private function delStationBack(res:String):void{
+				MM.show(res);
+				refrashStation(new Event("enevt"));
+			}
+			private var selectedCounts:int=0;
+			//选择点中后执行的方法
+			private function changeSelect(obj:Object):void{
+				selectAll.selected=false;
+				if(obj.data.isSelected=="true"){
+					this.selectedCounts=selectedCounts+1;  
+				}else{
+					this.selectedCounts=selectedCounts-1; 
+				}
+				if(selectedCounts==stationArr.length){
+					selectAll.selected=true;	
+				}
+			}
+			/**
+			 * 全选控制
+			 */
+			private function selectAllItem():void{
+				
+				if(stationArr == null || stationArr.length ==0){
+					return;
+				}
+				var check:Boolean = selectAll.selected;
+				if(check){
+					selectedCounts=stationArr.length;
+				}else{
+					selectedCounts=0;
+				}
+				for(var i:int=0; i<stationArr.length; i++){
+					var Obj:Object = stationArr.getItemAt(i) as Object;
+					Obj.isSelected = check.toString();
+				}
+				
+				stationArr.refresh(); //这个必须有，因为Obj.isSelected的值有变化，列表结果的dataProvider需要重新装载，即重新渲染
+			}
+			
+			
+			/**
+			 * 导出excel
+			 * */
+			private function getStationExcel():void
+			{
+				var url:String="com.viewscenes.web.dicManager.StationManager";
+				var func:String="getStationExcel";
+				
+				var head:String = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r';
+				head += '<msg type="'+url+'" function="'+func+'">\r';
+				var xmlText:String = head;
+				xmlText += "<name>"+station_name.text+"</name>";
+				xmlText += "</msg>";				
+				flash.external.ExternalInterface.call("toExcel",xmlText);
+				
+			}
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%" paddingTop="10" verticalAlign="middle">
+		<s:HGroup width="100%" height="25" horizontalAlign="left" verticalAlign="middle">
+			<s:HGroup width="50%" horizontalAlign="left" verticalAlign="middle">
+				<s:Label text="发射台名称"/>
+				<s:TextInput id="station_name" width="100"/>
+			</s:HGroup>
+			<s:HGroup width="50%" horizontalAlign="right" verticalAlign="middle">
+				<s:Button buttonMode="true" label="查询" width="100" click="queryStation()"/>
+				<s:Button buttonMode="true" label="增加" width="100" click="addStation()"/>				
+				<s:Button buttonMode="true" label="删除" width="100" click="delStation()"/>
+				<s:Button buttonMode="true" label="导出Excel" width="100" click="getStationExcel();"/>
+			</s:HGroup>		   			
+		</s:HGroup>
+		<mx:Canvas  width="100%" height="100%">
+			<s:DataGrid width="100%" height="100%"   id="grid" textAlign="center" dataProvider="{stationArr}">
+				<s:columns>
+					<s:ArrayCollection>
+						<s:GridColumn headerText="选择" width="60" editable="false" itemRenderer="{RendererUtil.getCheckBoxRenderer(changeSelect)}" />
+						<s:GridColumn dataField="name"  headerText="发射台名称" />
+						<s:GridColumn dataField="code"  headerText="代号" />
+						<s:GridColumn dataField="broadcast_direction"  headerText="播向区" />
+						<s:GridColumn dataField="station_type" headerText="发射台所属"/>
+						<s:GridColumn dataField="country"  headerText="国家" />
+						<s:GridColumn dataField="province" headerText="省" />
+						<s:GridColumn dataField="city"  headerText="市"/>
+						<s:GridColumn dataField="county"  headerText="县" />
+						<s:GridColumn dataField="address"  headerText="地址" />
+						<s:GridColumn dataField="longitude"  headerText="经度" />
+						<s:GridColumn dataField="latitude" headerText="纬度"/>
+						<s:GridColumn headerText="修改" itemRenderer="{RendererUtil.getButtonRenderer('修改',updateStation)}"/>
+					</s:ArrayCollection>
+				</s:columns>
+			</s:DataGrid>
+			<s:Label text="正在查询，请稍候..." id="clew_label" y="{grid.columnHeaderGroup.height+10}" color="0x000000" fontSize="15" width="100%" textAlign="center"  visible="false" includeInLayout="false" />
+		</mx:Canvas>
+		<s:HGroup  width="100%" height="30" verticalAlign="middle" gap="10">
+			<s:CheckBox id="selectAll" selected="false" change="selectAllItem()"/>
+			<s:Label text="全选"/> 			
+			<s:Label width="20"/>			
+			<!--分页组件所在地-->
+			<flipBar:PageBar   width="100%" id="pagebar" rowConutOfPage="40" totalPageQuery="5" height="20"/>
+		</s:HGroup> 
+	</s:VGroup>
+</system:BasePage>

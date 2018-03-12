@@ -1,0 +1,686 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" 
+		  xmlns:inputAlarm="com.viewscenes.module.dataquery.inputAlarm.*" 
+		  xmlns:system="com.morcha4.frame.system.*"
+		  xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+		  xmlns:checkbox="com.viewscenes.global.comp.checkbox.*"
+		  creationComplete="init();" xmlns:flipBar="com.viewscenes.utils.flipBar.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+		<!--包括国际台、海外的资料录入-->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.frame.system.AdvancedEvent;
+			import com.morcha4.frame.system.EventBus;
+			import com.morcha4.util.RendererUtil;
+			import com.viewscenes.beans.DataInputBean;
+			import com.viewscenes.beans.runplan.RunplanBean;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.EventDeclare;
+			import com.viewscenes.global.comp.MM;
+			import com.viewscenes.global.comp.Runplan;
+			import com.viewscenes.module.dataquery.inputAlarm.NoteForm;
+			import com.viewscenes.utils.StringTool;
+			import com.viewscenes.utils.timecomp.DateUtil;
+			
+			import mx.collections.ArrayList;
+			import mx.managers.PopUpManager;
+			
+			import spark.events.GridEvent;
+			
+			//数据集
+			[Bindable]
+			private var gjtDataArr:ArrayCollection = new ArrayCollection();
+			//收测国家
+			[Bindable]
+			private var countryArr:ArrayCollection = new ArrayCollection();
+			//收测城市
+			[Bindable]
+			private var cityArr:ArrayCollection = new ArrayCollection();
+			//发射台
+			[Bindable]
+			private var stationArr:ArrayCollection = new ArrayCollection();
+			//节目
+			[Bindable]
+			private var lanaguageArr:ArrayCollection = new ArrayCollection();
+			//节目类型
+			[Bindable]
+			private var programArr:ArrayCollection = new ArrayCollection();
+			//资料来源
+			[Bindable]
+//			private var datasrcArr:ArrayCollection = new ArrayCollection([{data:"",label:"全部"},{data:"听众反馈",label:"听众反馈"},{data:"互换资料",label:"互换资料"},{data:"遥控站收测",label:"遥控站收测"},{data:"实地收测",label:"实地收测"}]);
+			private var datasrcArr:ArrayCollection = new ArrayCollection([{data:"",label:"全部"},{data:"反馈收测",label:"反馈收测"},{data:"互换资料",label:"互换资料"},{data:"实地收测",label:"实地收测"}]);
+			
+			//资源类型
+			[Bindable]
+			private var dataTypeArr:ArrayCollection = new ArrayCollection([{data:"1",label:"国际台资源录入"},{data:"2",label:"海外落地资源录入"}]);
+			
+			//当前录入资料的对象
+			[Bindable]
+			private var dataInputBean:DataInputBean = new DataInputBean();
+			
+			//当前的录入类型
+			[Bindable]
+			private var curDataType:int = 1;
+			
+			[Bindable]
+			private var beanId:String ="";
+			//当前选中的记录
+			[Bindable]
+			private var selectArr:ArrayCollection = new ArrayCollection();
+			
+			//遥控站
+			[Bindable]
+			private var ykzArr:ArrayCollection = new ArrayCollection();
+			/**
+			 * 
+			 * 所有站点
+			 * */
+			private function getHeadendAll():void{
+				var arr:ArrayCollection=DataManager.getHeadendByState("all","all",true);
+				for(var i:int = 0;i<arr.length; i++){
+					var obj:Object = arr.getItemAt(i);
+					
+					ykzArr.addItem({label:obj.shortname,value:obj.code});
+				}
+			}
+			
+			private function init():void{
+				queryStation();
+				queryCountry();
+				queryCity();
+				getLanguageList();
+				queryProgramType();
+				getHeadendAll();
+			}
+			/**
+			 * 查询发射台信息
+			 * */
+			private function queryStation():void{
+				stationArr.removeAll();
+				stationArr = DataManager.stationBeanAll;
+				station.selectedIndex = 0;
+			}
+			
+			
+			
+			/**
+			 * 查询国家
+			 * */
+			private function queryCountry():void{
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getCountryList",null,getCountryListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getCountryListBack(arr:ArrayCollection):void{
+				countryArr.removeAll();
+				countryArr=arr;
+				countryArr.addItemAt("全部",0);
+				country.selectedIndex=0;
+			}
+			private function countryChange():void{
+				var obj:Object=new Object();
+				var contry:String=country.selectedItem;
+				if(contry!="全部"){
+					obj.country=contry;
+				}else{
+					obj.country="";
+				}
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.sysmgr.dicManager.CityTab","getCityByCountry",obj,getCityListBack,DataManager.showErrorMessageBack));
+
+			}
+			/**
+			 * 查询收测城市信息
+			 * */
+			private function queryCity():void{
+				var obj:Object = new Object();
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.sysmgr.dicManager.CityTab","getCityByCountry",obj,getCityListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getCityListBack(arr:ArrayCollection):void{
+				cityArr.removeAll();
+				cityArr = arr;
+				cityArr.addItemAt({city:"全部",id:""},0);
+				receivecity.selectedIndex = 0;
+			}
+			/**
+			 * 修改城市 ，对应改变相应国家
+			 */
+			private function cityChange():void{
+				
+				if(receivecity.selectedItem.city=="全部"){
+					country.selectedIndex=0;
+					return ;
+				}
+				
+				var cityCountry:String=receivecity.selectedItem.contry ;
+				if(country.selectedItem==cityCountry){
+					return;
+				}
+				country.selectedIndex=StringTool.getSelectIndex(country.dataProvider,null,cityCountry);
+			}
+			/**
+			 * 
+			 * 节目
+			 * */
+			private function getLanguageList():void{
+				var obj:Object = new Object;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getLanguageList",obj,getLanguageListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getLanguageListBack(arr:ArrayCollection):void{
+				lanaguageArr.removeAll();
+				lanaguageArr = arr;
+				lanaguageArr.addItemAt({language_name:"全部",language_id:""},0);
+				language.selectedIndex = 0;
+			}
+			
+			
+			/**
+			 * 查询节目类型信息
+			 * */
+			private function queryProgramType():void{
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getProgramType",null,queryProgramTypeBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function queryProgramTypeBack(arr:ArrayCollection):void{
+				programArr.removeAll();
+				programArr = arr;
+				programArr.addItemAt({runplanType:"全部",runplanTypeId:""},0);
+				programtype.selectedIndex = 0;
+			}
+			
+			private function reset():void{
+				freq.text = "";
+				language.selectedIndex = 0;
+				station.selectedIndex = 0;
+				power.text = "";
+				direction.text = "";
+				servicearea.text = "";
+				ciraf.text = "";
+				country.selectedIndex = 0;
+				receivecity.selectedIndex = 0;
+				datasource.selectedIndex = 0;
+				programtype.selectedIndex = 0;
+				fieldStrength.text = "";
+				level_value.text = "";
+				s.text = "";
+				i.text = "";
+				o.text = "";
+				setMark("");
+				redisseminators.text="";
+				queryCity();
+			}
+			
+			private function check():Boolean{
+				
+				if (freq.text == ""){
+					DataManager.showErrorMessage("频率不能为空");
+					return false;
+				}else if (!StringTool.checkFreq(freq.text)){
+					DataManager.showErrorMessage("频率不正确");
+					return false;
+				}else if (DateUtil.compareDateStr(starttime.text,endtime.text) == -1){
+					DataManager.showErrorMessage("开播日期要小于停播日期");
+					return false;
+				}else if (!checkSIO(s.text,i.text,o.text)){
+					return false;
+				}else if (language.selectedIndex==0 || language.selectedIndex == -1){
+					DataManager.showErrorMessage("请选择语言");
+					return false;
+				}else if (datasource.selectedIndex ==0  || datasource.selectedIndex == -1){
+					DataManager.showErrorMessage("请选择资料来源");
+					return false;
+				}
+				
+				if (curDataType == 1){
+					if (station.selectedIndex == 0  || station.selectedIndex == -1){
+						DataManager.showErrorMessage("请选择发射台");
+						return false;
+					}
+				}else {
+					if (redisseminators.text == ""){
+						DataManager.showErrorMessage("转播机构不能为空");
+						return false;
+					}
+					if (country.selectedIndex ==0  || country.selectedIndex == -1){
+						DataManager.showErrorMessage("请选择收测国家");
+						return false;
+					}
+					if (receivecity.selectedIndex ==0  || receivecity.selectedIndex == -1){
+						DataManager.showErrorMessage("请选择收测城市");
+						return false;
+					}
+					
+				}
+			
+				
+				
+				return true;
+			}
+			public static function checkSIO(s:String,i:String,o:String):Boolean{
+				
+				return true;
+			}
+			
+			private function dataTypeChange(event:Event):void{
+				
+				curDataType = event.currentTarget.selectedItem.data;
+				gjtDataArr.removeAll();
+			}
+			
+			/**
+			 * 点击datagrid某行数据触发的方法
+			 * */
+			private function onGridClick(event:GridEvent):void{
+				if(grid.dataProvider.length<=0){
+					return;
+				}else{
+					if(event.columnIndex==0||event.item==null){
+						return;
+					}else{
+						var obj:Object = new Object();
+						RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.sysmgr.dicManager.CityTab","getCityByCountry",obj,_ontidClick,DataManager.showErrorMessageBack));
+
+						
+					}
+					
+				}
+				
+			}
+			
+			private function _ontidClick(arr:ArrayCollection):void{
+				cityArr.removeAll();
+				cityArr = arr;
+				cityArr.addItemAt({city:"全部",id:""},0);
+				data_id.text = grid.selectedItem.data_id;
+				freq.text = grid.selectedItem.freq;
+				//语言
+				language.selectedIndex = StringTool.getSelectIndex(language.dataProvider,"language_id",grid.selectedItem.language_id);
+				
+				//发射台
+				station.selectedIndex = StringTool.getSelectIndex(station.dataProvider,"station_id",grid.selectedItem.station_id);
+				
+				power.text = grid.selectedItem.power;
+				direction.text = grid.selectedItem.direction;
+				servicearea.text = grid.selectedItem.service_area;
+				ciraf.text = grid.selectedItem.ciraf;
+				country.selectedIndex = StringTool.getSelectIndex(country.dataProvider,null,grid.selectedItem.receive_country);
+				receivecity.selectedIndex = StringTool.getSelectIndex(receivecity.dataProvider,"city",grid.selectedItem.receive_city);
+				datasource.selectedIndex = StringTool.getSelectIndex(datasource.dataProvider,"data",grid.selectedItem.datasource);
+				redisseminators.text=grid.selectedItem.station_name;
+				programtype.selectedIndex = StringTool.getSelectIndex(programtype.dataProvider,"runplanTypeId",grid.selectedItem.program_type) == -1?0:StringTool.getSelectIndex(programtype.dataProvider,"runplanTypeId",grid.selectedItem.program_type);
+				fieldStrength.text = grid.selectedItem.field_strength;
+				level_value.text = grid.selectedItem.level_value;
+				s.text = grid.selectedItem.s;
+				i.text = grid.selectedItem.i;
+				o.text = grid.selectedItem.o;
+				starttime.text = grid.selectedItem.start_time;
+				endtime.text = grid.selectedItem.end_time;
+				receive_date.text = grid.selectedItem.receive_date;
+//				receive_time.text = grid.selectedItem.receive_time;
+				setMark(grid.selectedItem.remark);
+			}
+			/**
+			 * 打开运行图窗口
+			 */ 
+			private function showRunplanWindow():void{
+				EventBus.addEventListener(EventDeclare.RUNPLAN,runplanBack);
+				var runplan:Runplan = new Runplan();
+				var obj:Object = new Object();
+				obj.flag = "true";
+				obj.doQuery = "";
+				runplan.show(curDataType+"",obj,this);
+			}
+			
+			private function runplanBack(e:AdvancedEvent):void{
+				
+				var list:ArrayList  = e.data as ArrayList;
+				
+				var run:RunplanBean =list.getItemAt(0) as RunplanBean;
+				if (run != null){
+					
+					freq.text = run.freq;
+					//语言
+					language.selectedIndex = StringTool.getSelectIndex(language.dataProvider,"language_name",run.language_name);
+					
+					if (curDataType == 1){
+						//发射台
+						station.selectedIndex = StringTool.getSelectIndex(station.dataProvider,"station_id",run.station_id);
+//						_ykz.setText(run.xg_mon_area,"value");
+						//功率
+						power.text = run.power;
+						direction.text = run.direction;
+					}else{
+						redisseminators.text = run.redisseminators;
+						//发射国家
+						country.selectedIndex  = StringTool.getSelectIndex(country.dataProvider,null,run.launch_country);
+						//发射城市
+						receivecity.selectedIndex = StringTool.getSelectIndex(receivecity.dataProvider,"city",run.sendcity);
+
+					}
+					
+//					MM.show(run.xg_mon_area+run.service_area+run.ciraf);
+					servicearea.text = run.service_area;
+					ciraf.text = run.ciraf;
+					starttime.text=run.start_time;
+					endtime.text=run.end_time;
+					
+				}
+			}
+			
+			/**
+			 * 查询资料
+			 */ 
+			private function queryData():void{
+				selectArr.removeAll();
+				data_id.text="";
+				showTips(true,"正在查询,请稍候...");
+				var data:DataInputBean = bandData();
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dataquery.datainput.DataInput","queryData",data,queryDataBack,DataManager.showErrorMessageBack));
+				
+			}
+			
+			private function queryDataBack(arr:ArrayCollection):void{
+				var obj:Object = new Object();
+				if(arr.length == 0){
+					
+					obj.resultList = new ArrayCollection();
+					obj.resultTotal = 0;
+				}else{
+					obj.resultList=arr;
+					obj.resultTotal=obj.resultList.length
+				}
+				pagebar.m_queryProcess(obj,_queryDataBack);
+				
+			}
+			private function _queryDataBack(arr:ArrayCollection):void{
+				if (arr.length == 0)
+					showTips(true,"无查询结果...");
+				else
+					showTips(false,"");
+				gjtDataArr = arr;
+			}
+			
+			/**
+			 * 添加资料
+			 */
+			private function addData():void{
+				if (check()){
+					var data:DataInputBean = bandData();
+					RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dataquery.datainput.DataInput","addData",data,addDataBack,DataManager.showErrorMessageBack));
+				}
+				
+			}
+			
+			private function addDataBack(str:String):void{
+				MM.show(str);
+				queryData();
+			}
+			
+			
+			/**
+			 * 修改资料
+			 */
+			private function updateData():void{
+				if(data_id.text==""||data_id.text.length==0){
+					MM.show("没有需要修改的项!");
+					return;
+				}
+				if (check()){
+					var data:DataInputBean = bandData();
+					RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dataquery.datainput.DataInput","updateData",data,updateDataBack,DataManager.showErrorMessageBack));
+				}
+			}
+			private function updateDataBack(str:String):void{
+				MM.show(str);
+				queryData();
+			}
+			
+			/**
+			 * 删除资料
+			 */
+			private function delData():void{
+				if (!selectArr.length>0){
+					MM.show("请选择所要删除的资料信息");
+					return ;
+				}
+					MM.show("确定要删除选中的资料信息吗？","删除资料",'',confirmDel,true,null,null);
+			}
+			
+			private function confirmDel():void{
+				if (selectArr.length>0)
+					RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dataquery.datainput.DataInput","delData",selectArr,confirmDelBack,DataManager.showErrorMessageBack));
+			}
+			
+			
+			private function confirmDelBack(str:String):void{
+				MM.show(str);
+				queryData();
+			}
+			/**
+			 * 
+			 * 数据绑定
+			 */ 
+			private function bandData():DataInputBean{
+				var data:DataInputBean = new DataInputBean;
+				data.data_id = data_id.text;
+				data.data_type = dataType.selectedItem.data;
+				data.freq = freq.text;
+				data.language_id = language.selectedItem.language_id;
+				data.language_name = language.selectedItem.language_name;
+				if (curDataType == 1){
+					data.station_id = station.selectedItem.station_id;
+					data.station_name = station.selectedItem.name;
+				}else{
+					data.station_name = redisseminators.text;
+				}
+				
+				data.service_area = servicearea.text;
+				data.ciraf = ciraf.text;
+				data.receive_country = country.selectedItem;
+				data.receive_city = receivecity.selectedItem.city;
+				data.datasource = datasource.selectedItem.data;
+				data.program_type = programtype.selectedItem.runplanTypeId;
+				data.field_strength = fieldStrength.text;
+				data.level_value = level_value.text;
+				data.s = s.text;
+				data.i = i.text;
+				data.o = o.text;
+				data.start_time = starttime.text;
+				data.end_time = endtime.text;
+				data.receive_date = receive_date.text;
+//				data.receive_time = receive_time.text;
+				data.remark = mark.text;
+				data.power=power.text;
+				data.direction=direction.text;
+				return data;
+			}
+			
+			//选择点中后执行的方法
+			private function changeSelect(obj:Object):void{
+				var data:DataInputBean = obj.data as DataInputBean;
+				if(data.isSelected=="true"){
+					selectArr.addItem(data);
+				}else{
+					//if (selectArr.contains(data))
+						selectArr.removeItemAt(selectArr.getItemIndex(data));
+				}
+			}
+			
+			
+			private function programTypelableFunction(item:Object,gc:GridColumn):String{
+				if (item.program_type == '1')
+					return "海外转播";
+				else if (item.program_type == '2')
+					return "国内直属";
+				else if (item.program_type == '3')
+					return "国外直属";
+				else if (item.program_type == '4')
+					return "国内地方";
+				
+				return "未知";
+			}
+			
+			
+			/**
+			 * 查询时提示信息
+			 */ 
+			private function showTips(b:Boolean,msg:String=""):void{
+				
+				if (b == true){
+					clew_label.y = grid.y+50;
+					clew_label.visible = true;
+					clew_label.includeInLayout = true;
+					clew_label.text = msg;//"正在查询,请稍候...";
+				}else{
+					clew_label.visible = false
+					clew_label.includeInLayout = false;
+					clew_label.text = "";
+				}
+			}
+			private function doExcel():void{
+				var url:String="com.viewscenes.web.dataquery.datainput.DataInput";
+				var func:String="doExel";
+				var head:String = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r';
+				head += '<msg type="'+url+'" function="'+func+'">\r';
+				var xmlText:String = head;		
+				xmlText += "<data_type>"+dataType.selectedItem.data+"</data_type>";
+				xmlText += "<freq>"+freq.text+"</freq>";
+				xmlText += "<language_id>"+language.selectedItem.language_id+"</language_id>";
+				xmlText +="<station_id>"+station.selectedItem.station_id+"</station_id>";
+				xmlText += "<station_name>"+redisseminators.text+"</station_name>";
+				xmlText += "<service_area>"+servicearea.text+"</service_area>";
+				
+				xmlText += "<ciraf>"+ciraf.text+"</ciraf>";
+				xmlText += "<receive_country>"+country.selectedItem+"</receive_country>";
+				xmlText += "<receive_city>"+receivecity.selectedItem.city+"</receive_city>";
+				xmlText +="<datasource>"+datasource.selectedItem.data+"</datasource>";
+				xmlText += "<program_type>"+programtype.selectedItem.runplanTypeId+"</program_type>";
+				xmlText += "<field_strength>"+fieldStrength.text+"</field_strength>";
+				
+				xmlText += "<s>"+s.text+"</s>";
+				xmlText += "<i>"+i.text+"</i>";
+				xmlText += "<o>"+o.text+"</o>";
+				xmlText += "<level_value>"+level_value.text+"</level_value>";
+				xmlText += "<remark>"+mark.text+"</remark>";
+				xmlText += "<power>"+power.text+"</power>";
+				xmlText += "<direction>"+direction.text+"</direction>";
+				xmlText += "</msg>";
+				flash.external.ExternalInterface.call("toExcel",xmlText);
+			}
+			private function openNote():void{
+				var pop:NoteForm=NoteForm(PopUpManager.createPopUp(this,NoteForm,true));
+				pop.setNote(mark.text);
+				pop.parenter=this;
+				PopUpManager.centerPopUp(pop);
+			}
+			public function setMark(str:String):void{
+				mark.text=str;
+				var markWidth:int=mark.measureText(str).width;
+				if(markWidth>mark.width){
+					mark.toolTip=str;
+				}else{
+					mark.toolTip="";
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<s:VGroup width="100%" height="100%" verticalAlign="top">
+		<s:VGroup id="content" width="100%"  verticalAlign="top">
+			<s:HGroup width="100%"  height="100%" horizontalAlign="left" paddingTop="5"  verticalAlign="middle">
+				<s:Button buttonMode="true" label="从运行图提取" click="showRunplanWindow()"/>
+				<!--只为存放修改时的记录ID-->
+				<s:TextInput id="data_id" visible="false" includeInLayout="false"/>
+				<s:Label text="录入类型"/><s:DropDownList id="dataType" width="150" change="dataTypeChange(event)" selectedIndex="0" dataProvider="{dataTypeArr}"/>
+				<s:Label text="频率"/><s:TextInput id="freq" width="50"/>
+				<s:Label text="语言"/><s:DropDownList id="language" width="80" dataProvider="{lanaguageArr}" labelField="language_name"/>
+				<s:HGroup horizontalAlign="left" verticalAlign="middle" visible="{(dataType.selectedIndex==0?true:false)}" includeInLayout="{(dataType.selectedIndex==0?true:false)}" >
+		
+					<s:Label text="发射台"/><s:DropDownList  id="station" width="100" selectedIndex="0" requireSelection="true"  dataProvider="{stationArr}" labelField="name"/>
+					<s:Label text="发射功率"/><s:TextInput id="power" restrict="0-9" width="70"/>
+					<s:Label text="发射方向"/><s:TextInput id="direction" restrict="0-9" width="70"/>
+				</s:HGroup>
+				<s:HGroup horizontalAlign="left" verticalAlign="middle" visible="{(dataType.selectedIndex==1?true:false)}" includeInLayout="{(dataType.selectedIndex==1?true:false)}" >
+					<s:Label text="转播机构"/><s:TextInput id="redisseminators" width="120"/>	
+					<s:Label text="收测国家"/><s:ComboBox id="country" width="100" dataProvider="{countryArr}" change="countryChange()" />
+					<s:Label text="收测城市"/><s:ComboBox id="receivecity" width="100" dataProvider="{cityArr}" labelField="city" change="cityChange()" />
+				</s:HGroup>				
+			</s:HGroup>
+			<mx:HRule width="100%" strokeWidth="1" strokeColor="#a0a0a0" shadowColor="#000000" />
+			<s:HGroup width="100%"  height="100%" horizontalAlign="left" paddingTop="5"  verticalAlign="middle">
+				<!--s:Label text="收测站点"/><checkbox:CheckDropList id="_ykz" dataProvider="{ykzArr}" visible="{(dataType.selectedIndex==0?true:false)}" filedLabel="label" width="120"/-->	
+				<s:Label text="服务区"/><s:TextInput id="servicearea" width="70"/>
+				<s:Label text="CIRAF区"/><s:TextInput id="ciraf" width="70"/>
+				<s:Label text="资料来源"/><s:DropDownList id="datasource" width="100" selectedIndex="0" dataProvider="{datasrcArr}"/>
+				<s:Label text="节目类别"/><s:DropDownList id="programtype" dataProvider="{programArr}" selectedIndex="0" labelField="runplanType" width="100" />
+				<s:Label text="场强"/><s:TextInput id="fieldStrength" width="70"/>
+				<s:Label text="电平值"/><s:TextInput id="level_value" width="70"/>
+				<s:Label text="S"/><s:TextInput id="s" width="30"/>
+				<s:Label text="I"/><s:TextInput id="i" width="30"/>
+				<s:Label text="O"/><s:TextInput id="o" width="30"/>	
+			</s:HGroup>
+			<mx:HRule width="100%" strokeWidth="1" strokeColor="#a0a0a0" shadowColor="#000000" />
+			<s:HGroup width="100%"  height="100%" horizontalAlign="left"  paddingTop="5" verticalAlign="middle">				
+				<s:Label text="开播时间"/><timecomp:TimeNew dateDisplay="timenew" id="starttime"/>
+				<s:Label text="停播时间"/><timecomp:TimeNew dateDisplay="timenew" id="endtime"/>
+				<s:Label text="收测日期"/><timecomp:TimeNew dateDisplay="date" id="receive_date"/>
+				<!--s:Label text="收测时间"/><timecomp:TimeNew dateDisplay="timenew" id="receive_time"/-->
+				<s:Label text="备注"/><s:TextInput id="mark" width="120" editable="false"/>
+				<s:Button label="录入备注" click="openNote()"/>
+			</s:HGroup>
+			<mx:HRule width="100%" strokeWidth="1" strokeColor="#a0a0a0" shadowColor="#000000" />
+			<s:HGroup width="100%"  height="100%" horizontalAlign="left" paddingTop="5" textAlign="center" verticalAlign="middle">
+				<s:Button buttonMode="true" label="查询" click="queryData()"/>
+				<s:Button buttonMode="true" label="增加" click="addData()"/>
+				<s:Button buttonMode="true" label="修改" click="updateData()"/>
+				<s:Button buttonMode="true" label="删除" click="delData()"/>
+				<s:Button buttonMode="true" label="重置" click="reset()"/>
+				<!--s:Button buttonMode="true" label="导入"/-->
+				<s:Button buttonMode="true" label="导出" click="doExcel()"/>
+			</s:HGroup>
+		</s:VGroup>
+		<s:VGroup width="100%" height="100%">
+			<mx:Canvas width="100%" height="100%">
+				<s:DataGrid width="100%" height="100%" id="grid" textAlign="center" dataProvider="{gjtDataArr}" gridClick="onGridClick(event)" showDataTips="true">
+					<s:columns>
+						<s:ArrayCollection>
+							<s:GridColumn headerText="选择" dataField="data_id" itemRenderer="{RendererUtil.getCheckBoxRenderer(changeSelect)}"/>
+							<s:GridColumn headerText="频率（kHz）" width="80" dataField="freq"  />
+							<s:GridColumn headerText="开播时间" dataField="start_time" />
+							<s:GridColumn headerText="停播时间" dataField="end_time"/>
+							
+							<s:GridColumn headerText="语言" dataField="language_name"/>
+							<s:GridColumn headerText="发射台"   visible="{curDataType==1?true:false}"  dataField="station_name" />
+							<s:GridColumn headerText="发射功率"  visible="{curDataType==1?true:false}" dataField="power"/>
+							<s:GridColumn headerText="发射方向"  visible="{curDataType==1?true:false}" dataField="direction" />
+							<s:GridColumn headerText="转播机构"  visible="{curDataType==2?true:false}" dataField="station_name"/>
+							<s:GridColumn headerText="收测国家"   visible="{curDataType==2?true:false}" dataField="receive_country" />							
+							<s:GridColumn headerText="收测城市"  visible="{curDataType==2?true:false}" dataField="receive_city" />
+							<s:GridColumn headerText="服务区"  dataField="service_area" />
+							<s:GridColumn headerText="CIRAF区"  dataField="ciraf" />
+						
+							<s:GridColumn headerText="资料来源"  dataField="datasource"/>
+							<s:GridColumn headerText="节目类别" labelFunction="programTypelableFunction" dataField="program_type"/>
+							<s:GridColumn headerText="收测日期"  dataField="receive_date"/>
+							<!--s:GridColumn headerText="收测时间"  dataField="receive_time"/-->
+							<s:GridColumn headerText="S" width="30"  dataField="s"/>
+							<s:GridColumn headerText="I" width="30" dataField="i"/>
+							<s:GridColumn headerText="O" width="30" dataField="o"/>
+							<s:GridColumn headerText="场强"  dataField="field_strength"/>
+							<s:GridColumn headerText="备注"  dataField="remark" maxWidth="150"/>
+						</s:ArrayCollection>
+					</s:columns>
+				</s:DataGrid>
+				<s:Label text="正在查询，请稍候..." color="0x000000" id="clew_label" y="{grid.columnHeaderGroup.height+10}" width="100%" textAlign="center"  visible="false" includeInLayout="false" />
+			</mx:Canvas>
+			<flipBar:PageBar  id="pagebar" rowConutOfPage="30" totalPageQuery="10" height="20"/>
+		</s:VGroup>	
+	</s:VGroup>
+</system:BasePage>

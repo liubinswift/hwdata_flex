@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 xmlns:system="com.morcha4.frame.system.*" 
+				 width="100%" height="100%" creationComplete="init()">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCException;
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.viewscenes.global.DataManager;
+			import mx.controls.Alert;
+			import mx.collections.ArrayCollection;
+			[Bindable] private var info:ArrayCollection = new ArrayCollection();
+			[Bindable] private var startTimeArr:ArrayCollection = new ArrayCollection();
+			private function init():void{
+				getBroadcastTime();
+			}
+			/**
+			 * 当前有效运行图的播音时段
+			 * */
+			private function getBroadcastTime():void{
+				var request:RORequestParam = new RORequestParam("com.viewscenes.web.common.Common","getBroadcastTime",false,getBroadcastTimeBack,DataManager.showErrorMessageBack);
+				RPCManager.sendCmd(request);
+			}
+			
+			private function getBroadcastTimeBack(list:ArrayCollection):void{
+				startTimeArr=list;
+				startTimeArr.addItemAt("全部",0);
+				broadcastTime.selectedIndex=0;
+			}
+			private function statisticsInfo():void{
+				info.removeAll();
+				clew_label.visible=true;
+				clew_label.includeInLayout=true;
+				var obj:Object = new Object();
+				if(station.selected==true){
+					obj.flag="station";
+				}
+				if(language.selected==true){
+					obj.flag="language";
+				}
+				if(area.selected==true){
+					obj.flag="area";
+				}
+				if(broadcast_time.selected==true){
+					obj.flag="broadcast_time";
+				}
+				obj.station_name=stationName.selectedItem.name;
+				obj.station_id=stationName.selectedItem.station_id;
+				obj.language_name=languageName.selectedItem.language_name;
+				obj.language_id = languageName.selectedItem.language_id;
+				obj.service_area =serviceName.selectedItem.chinese_name;
+				obj.broadcast_time=broadcastTime.selectedItem;
+				
+				var request:RORequestParam = new RORequestParam("com.viewscenes.web.runplanStatistics.WGTRunplanStatistics","statisticsInfo",obj,statisticsInfoBack,DataManager.showErrorMessageBack);
+				
+				RPCManager.sendCmd(request);
+			}
+			
+			private function statisticsInfoBack(arr:ArrayCollection):void{
+				if(arr.length>0){
+					clew_label.visible=false;
+					clew_label.includeInLayout=false;
+					info=arr;
+				}else{
+					clew_label.text="没有相关统计数据";
+				}
+				
+			}
+			
+			protected function clickHandler(id:String):void
+			{
+				info.removeAll();
+				if(id=="station"){
+					head.headerText="发射台";
+					head.dataField="station";
+				}
+				if(id=="language"){
+					head.headerText="语言";
+					head.dataField="language";
+				}
+				if(id=="area"){
+					head.headerText="地区";
+					head.dataField="area";
+				}
+				if(id=="broadcast_time"){
+					head.headerText="播音时段";
+					head.dataField="broadcast_time";
+				}
+			}
+			
+			private function doExcel():void{
+				var url:String="com.viewscenes.web.runplanStatistics.WGTRunplanStatistics";
+				var func:String="doExcel";
+				
+				var head:String = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r';
+				head += '<msg type="'+url+'" function="'+func+'">\r';
+				var xmlText:String = head;
+				if(station.selected==true){
+					xmlText += "<flag>station</flag>";
+				}
+				if(language.selected==true){
+					xmlText += "<flag>language</flag>";
+				}
+				if(area.selected==true){
+					xmlText += "<flag>area</flag>";
+				}
+				if(broadcast_time.selected==true){
+					xmlText += "<flag>broadcast_time</flag>";
+				}
+				xmlText += "<station_name>"+stationName.selectedItem.name+"</station_name>";
+				xmlText += "<station_id>"+stationName.selectedItem.station_id+"</station_id>";
+				xmlText += "<language_name>"+languageName.selectedItem.language_name+"</language_name>";
+				xmlText += "<language_id>"+languageName.selectedItem.language_id+"</language_id>";
+				xmlText += "<service_area>"+serviceName.selectedItem.chinese_name+"</service_area>";
+				xmlText += "<broadcast_time>"+broadcastTime.selectedItem+"</broadcast_time>";
+				xmlText += "</msg>";
+				
+				flash.external.ExternalInterface.call("toExcel",xmlText);
+			}
+			
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%" paddingTop="10" horizontalAlign="center" verticalAlign="middle">
+		<s:HGroup width="100%" height="20" paddingLeft="10"  verticalAlign="middle">
+			<s:Label text="统计条件："/>
+			<s:Label text="发射台"/>
+			<s:DropDownList width="100" id="stationName" selectedIndex="0" labelField="name" dataProvider="{DataManager.stationBeanAll}"/>
+			<s:Label text="语言"/>	
+			<s:DropDownList width="100" id="languageName" selectedIndex="0" labelField="language_name" dataProvider="{DataManager.languageBeanAll}"/>
+			<s:Label text="服务区"/>	
+			<s:DropDownList width="100" id="serviceName" selectedIndex="0" labelField="chinese_name" dataProvider="{DataManager.serviceAreaBeanAll}"/>
+			<s:Label text="播音时间"/>	
+			<s:DropDownList width="110" id="broadcastTime" selectedIndex="0" dataProvider="{startTimeArr}"/>
+		</s:HGroup> 
+		<mx:HRule width="100%" strokeWidth="1" strokeColor="#a0a0a0" shadowColor="#000000" />
+		<s:HGroup width="100%" height="20" verticalAlign="middle">
+			<s:Label text="统计类型："/>
+			<s:RadioButton label="按发射台统计" id="station" selected="true" click="clickHandler(this.station.id)"/>
+			<s:RadioButton label="按语言统计" id="language" click="clickHandler(this.language.id)"/>
+			<s:RadioButton label="按地区统计" id="area" click="clickHandler(this.area.id)"/>
+			<s:RadioButton label="按播音时间统计" id="broadcast_time" click="clickHandler(this.broadcast_time.id)"/>
+			<s:Spacer width="100%"/>
+			<s:Button buttonMode="true" label="统计" click="statisticsInfo()"/>
+			<s:Button buttonMode="true" label="导出" click="doExcel()"/>
+		</s:HGroup>
+		<s:Group width="100%" height="100%">
+			<mx:AdvancedDataGrid width="100%" height="100%" textAlign="center" dataProvider="{info}" sortExpertMode="true" id="grid" >
+				<mx:groupedColumns>
+					<mx:AdvancedDataGridColumnGroup headerText="发射台" id="head" dataField="station">
+					</mx:AdvancedDataGridColumnGroup>
+					<mx:AdvancedDataGridColumnGroup headerText="播出统计">
+						<mx:AdvancedDataGridColumn headerText="频率数" dataField="bc_freq" />
+						<mx:AdvancedDataGridColumn headerText="频时数" dataField="bc_hours"/>
+					</mx:AdvancedDataGridColumnGroup>
+					<mx:AdvancedDataGridColumnGroup headerText="收测统计">
+						<mx:AdvancedDataGridColumn headerText="频率数" dataField="sc_freq" />
+						<mx:AdvancedDataGridColumn headerText="频时数" dataField="sc_hours" />
+					</mx:AdvancedDataGridColumnGroup>
+				</mx:groupedColumns>
+			</mx:AdvancedDataGrid>
+			<s:Label text="正在查询，请稍候..." id="clew_label" y="{grid.headerHeight+10}" color="0x000000" fontSize="15" width="100%" textAlign="center"  visible="false" includeInLayout="false" />
+		</s:Group>
+	</s:VGroup>
+</system:BasePage>

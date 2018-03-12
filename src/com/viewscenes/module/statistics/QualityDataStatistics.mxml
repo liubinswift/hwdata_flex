@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 xmlns:system="com.morcha4.frame.system.*" 
+				 width="100%" height="100%" xmlns:global="com.viewscenes.global.*" 
+				 xmlns:timecomp="com.viewscenes.utils.timecomp.*" 
+				 creationComplete="init()"
+				 xmlns:flipBar="com.viewscenes.utils.flipBar.*" xmlns:comp="com.viewscenes.global.comp.*" xmlns:checkbox="com.viewscenes.global.comp.checkbox.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+		
+			
+			[Bindable]
+			public var dataArray:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			private var headendArr:ArrayCollection=new ArrayCollection();
+			protected function init():void
+			{
+				// TODO Auto-generated method stub
+				this.report.callBackDetailMethod=callBackDetailMethod;//报表详细显示方法
+				this.report.callBackExportMethod=callBackExportMethod;//报表导出方法
+				this.report.callBackGetParamMethod=callBackGetParamMethod;
+				this.report.reportType="1005";//报表类型.
+				getHeadend();
+			}
+		
+			private function getHeadend():void{
+				var arr:ArrayCollection=DataManager.getHeadendByState("all","102",true);
+				for(var i:int=0;i<arr.length;i++){
+					var obj:Object = new Object();
+					obj.label = arr.getItemAt(i).shortname;
+					obj.value = arr.getItemAt(i).code;
+					headendArr.addItem(obj);
+				}
+			}
+			private function callBackGetParamMethod() :Object{
+				var obj:Object=new Object();
+				if(headend.getText("label")!=null&&headend.getText("label").length!=0){
+					obj.headnames=headend.getText("label");
+					obj.code=headend.getText("value");
+				}
+				if(freq.text!=""&&freq.text.length!=0){
+					obj.freq=freq.text;
+				}
+				return obj;
+			}
+			/**
+			 * 控制datagrid的提示框是否显示，以及显示内容
+			 * **/
+			public function con_clewlabel(_component:Label,_visible:Boolean,_label:String="")
+			{
+				_component.visible=_visible;
+				_component.includeInLayout=_visible;
+				_component.text=_label;
+			}
+			function callBackExportMethod():void{
+			
+				//ExportExcel.exportToExcelGWStation(result,pagebar.resutlList,"海外落地节目质量异态统计");
+				var url:String="com.viewscenes.web.statistics.QualityDataStatistics";
+				var func:String="doExcel";
+				
+				var head:String = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r';
+				head += '<msg type="'+url+'" function="'+func+'">\r';
+				var xmlText:String = head;
+				
+				if(this.report.reportBean==null){
+					MM.show("请查询报表后再导出！");
+					return;
+				}
+				xmlText += "<reportId>"+this.report.reportBean.report_id+"</reportId>";
+				xmlText += "<starttime>"+this.report.reportBean.start_datetime+"</starttime>";
+				xmlText += "<endtime>"+this.report.reportBean.end_datetime+"</endtime>";
+				xmlText += "</msg>";
+				
+				flash.external.ExternalInterface.call("toExcel",xmlText);
+			}
+			function callBackDetailMethod(obj:Object):void{
+				if(obj == null){
+					obj = new Object();
+					obj.resultList = new ArrayCollection();
+					obj.resultTotal = 0;
+				}
+				pagebar.m_queryProcess(obj,showBackDetailMethod);
+				
+			}
+			function showBackDetailMethod(obj:ArrayCollection):void{
+				
+				con_clewlabel(clew_label,false);
+				dataArray.removeAll();
+				dataArray=obj;	
+				if(obj.length==0){
+					
+					con_clewlabel(clew_label,true,"无查询数据！");
+				}
+				
+			}
+			private function reDate(item:Object,gc:GridColumn):String{
+				var data_time:String=item.data_time;
+				if(data_time.length<10){
+					return data_time;
+				}
+				return data_time.substr(0,10);
+			}
+		]]>
+	</fx:Script>
+	
+	
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	
+	
+	<s:VGroup width="100%" height="100%">
+		<s:HGroup width="100%" verticalAlign="middle" >
+			<s:Label text="收测站点:" />
+			<checkbox:CheckDropList id="headend" dataProvider="{headendArr}" rowCount="15" />
+			<s:Label text="频率:" />
+			<s:TextInput id="freq" />
+			
+		</s:HGroup>
+		<comp:ReportIndexList id="report" height="90"/>		
+		
+		<s:VGroup width="100%" height="100%">
+			<s:HGroup width="100%" height="100%">
+				<s:DataGrid width="100%" height="100%" id="result" textAlign="center"  showDataTips="true" dataProvider="{dataArray}" >
+					<s:columns>
+						<s:ArrayCollection>
+							<s:GridColumn headerText="日期"   labelFunction="reDate" />
+							<s:GridColumn headerText="频率" dataField="frequency" />
+							<s:GridColumn headerText="播音时间" dataField="play_time"/>
+							<s:GridColumn headerText="语言" dataField="language" />
+							<s:GridColumn headerText="发射台"  dataField="station_name" />
+							
+							<s:GridColumn headerText="收测遥控站"  dataField="head_name"/>
+							<s:GridColumn headerText="电平中值"  dataField="data_level"/>
+							<s:GridColumn headerText="调幅度/调制度"  dataField="data_fmoram"/>
+							<s:GridColumn headerText="频偏"  dataField="data_offset" />
+			
+						</s:ArrayCollection>
+					</s:columns>
+				</s:DataGrid>
+					</s:HGroup>
+			<!--分页组件所在地-->
+			<s:Label text="正在查询，请稍候..." color="0x000000" id="clew_label" y="{result.columnHeaderGroup.height+10}" width="100%" textAlign="center"  visible="false" includeInLayout="false" />				
+			
+			<!--分页组件所在地-->
+			<flipBar:PageBar  id="pagebar" rowConutOfPage="30" totalPageQuery="10" height="20"/>
+		</s:VGroup>
+	</s:VGroup>
+</system:BasePage>

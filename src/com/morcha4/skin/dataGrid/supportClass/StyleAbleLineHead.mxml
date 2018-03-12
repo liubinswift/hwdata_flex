@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:HGroup xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark"  gap="0"
+		 xmlns:mx="library://ns.adobe.com/flex/mx">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Metadata>
+	</fx:Metadata>
+	<s:Line width="100%" height="100%">
+		<s:stroke>
+			<s:SolidColorStroke color="{getStyle('lineColor1')}" weight="{getStyle('lineWeight1')}" alpha="{getStyle('lineAlpha1')}" caps="square"/>
+		</s:stroke>
+	</s:Line>
+	<s:Line width="100%" height="100%">
+		<s:stroke>
+			<s:SolidColorStroke color="{getStyle('lineColor2')}" weight="{getStyle('lineWeight2')}" alpha="{getStyle('lineAlpha2')}" caps="square"/>
+		</s:stroke>
+	</s:Line>
+</s:HGroup>
+

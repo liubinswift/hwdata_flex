@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 xmlns:system="com.morcha4.frame.system.*"
+				 xmlns:flipBar="com.viewscenes.utils.flipBar.*"
+				 xmlns:checkbox="com.viewscenes.global.comp.checkbox.*"
+				 width="100%" height="100%" creationComplete="init()">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCException;
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.util.RendererUtil;
+			import com.viewscenes.global.DataManager;
+			
+			import spark.events.IndexChangeEvent;
+			[Bindable] 
+			private var info:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			private var websiteArr:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			private var HeadArr:ArrayCollection = new ArrayCollection();
+			
+			private function init():void{
+				queryHeadend();
+			}
+			/**
+			 * 查询站点信息
+			 * */
+			private function queryHeadend():void{
+				var obj:Object = new Object();
+				obj.type_id="all";
+				obj.state="all"; 
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.runplanManager.gjtRunplan.GJTRunplan","getHeadendList",obj,getHeadendListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getHeadendListBack(arr:ArrayCollection):void{
+				HeadArr=arr;
+			}
+			private function staticInfo():void{
+				var obj:Object = new Object();
+				//var runplanType = runplan_type.selectedItem.value;
+				obj.website = mon_area.getText("value");
+				//	obj.runplanType = runplan_type.selectedItem.value;
+				info.removeAll();
+				clew_label.visible=true;
+				clew_label.includeInLayout=true;
+				clew_label.text="正在生成,请稍候......";
+				var request:RORequestParam = new RORequestParam("com.viewscenes.web.freqtimetab.FreqRecord","getInfo",obj,getInfoBack,DataManager.showErrorMessageBack);
+				//pagebar.m_sendCmd(request);
+				RPCManager.sendCmd(request);
+			}
+			
+			private function getInfoBack(arr:ArrayCollection):void{
+				if(arr.length>0){
+					clew_label.visible=false;
+					clew_label.includeInLayout=false;
+					info=arr;
+				}else{
+					clew_label.text="没有相关统计数据";
+				}
+			}
+			
+			//			protected function runplan_type_changeHandler():void
+			//			{
+			//				// TODO Auto-generated method stub
+			//				info.removeAll();
+			//				if(runplan_type.selectedItem.value=="1"){
+			//					rism.visible=false;
+			//					sti.visible=true;
+			//					cif.visible=true;
+			//				}else{
+			//					rism.visible=true;
+			//					sti.visible=false;
+			//					cif.visible=false;
+			//				}
+			//				
+			//			}
+			
+			private function doExcel():void{
+				var url:String="com.viewscenes.web.freqtimetab.FreqRecord";
+				var func:String="";
+				//if(runplan_type.selectedItem.value=='1'){
+				func="doExcel";
+				//				}else{
+				//					func="doExcel1";
+				//				}
+				
+				
+				var head:String = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r';
+				head += '<msg type="'+url+'" function="'+func+'">\r';
+				var xmlText:String = head;
+				//xmlText += "<runplanType>"+runplan_type.selectedItem.value+"</runplanType>";
+				xmlText += "<website>"+mon_area.getText("value")+"</website>";
+				xmlText += "</msg>";
+				flash.external.ExternalInterface.call("toExcel",xmlText);
+			}
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%" paddingTop="10" horizontalAlign="center" verticalAlign="middle">
+		<s:HGroup width="100%" height="20" verticalAlign="middle" horizontalAlign="center">
+			
+			<!--s:DropDownList id="runplan_type" width="150" selectedIndex="0" change="runplan_type_changeHandler()" dataProvider="{new ArrayCollection([{label:'国际台运行图',value:'1'},{label:'海外落地运行图',value:'2'}])}"/-->
+			<s:Label text="收测站点"/>
+			<checkbox:CheckDropList id="mon_area" width="200" dataProvider="{HeadArr}" filedLabel="label"/>
+			<s:Button buttonMode="true" label="生成收听记录表" click="staticInfo()" />
+			<s:Button buttonMode="true" label="导出" click="doExcel()"/>
+		</s:HGroup>
+		<mx:Canvas  width="100%" height="100%">
+			<s:DataGrid width="100%" height="100%"   id="grid" textAlign="center" dataProvider="{info}">
+				<s:columns>
+					<s:ArrayCollection>
+						<!--s:GridColumn headerText="选择" width="60" editable="false" itemRenderer="{RendererUtil.getCheckBoxRenderer(changeSelect)}" /-->
+						<s:GridColumn dataField="freq"  headerText="频率(KHZ)" />
+						<s:GridColumn dataField="start_time"  headerText="开播时间" />
+						<s:GridColumn dataField="end_time"  headerText="停播时间" />
+						<s:GridColumn dataField="language"  headerText="语言" />
+						<s:GridColumn dataField="station" id="sti"  headerText="发射台" />
+						<s:GridColumn dataField="redisseminators" id="rism"   headerText="转播机构" />
+						<s:GridColumn dataField="power"  headerText="发射功率" />
+						<s:GridColumn dataField="direction"  headerText="发射方向" />
+						<s:GridColumn dataField="service_area"  headerText="服务区" />
+						<!--s:GridColumn dataField="program_type"  headerText="节目类型" />
+						<s:GridColumn dataField="ciraf" id="cif"  headerText="CIRAF区"/-->
+						<s:GridColumn dataField="valid_start_date"  headerText="收测国家" />
+						<s:GridColumn dataField="valid_start_time"  headerText="收测城市" />
+						
+						<s:GridColumn dataField="valid_end_date"  headerText="资料来源" />
+						<s:GridColumn dataField="rest_datetime"  headerText="收测日期" />
+						<s:GridColumn dataField="summer"  headerText="收测时间" />
+						<s:GridColumn dataField="s"  headerText="S" />
+						<s:GridColumn dataField="i"  headerText="I" />
+						<s:GridColumn dataField="o"  headerText="O" />
+						<s:GridColumn dataField="changqiang"  headerText="场强" />
+						<s:GridColumn dataField="remark"  headerText="备注" />
+					</s:ArrayCollection>
+				</s:columns>
+			</s:DataGrid>
+			<s:Label text="正在查询，请稍候..." id="clew_label" y="{grid.columnHeaderGroup.height+10}" color="0x000000" fontSize="15" width="100%" textAlign="center"  visible="false" includeInLayout="false" />
+		</mx:Canvas>	
+		<!--flipBar:PageBar width="100%" id="pagebar" rowConutOfPage="40" totalPageQuery="5" height="20"/-->
+	</s:VGroup>
+	
+</system:BasePage>

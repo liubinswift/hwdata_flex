@@ -1,0 +1,350 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx"
+				 xmlns:system="com.morcha4.frame.system.*" 
+				 xmlns:flipBar="com.viewscenes.utils.flipBar.*"
+				 xmlns:tools="com.viewscenes.utils.tools.*"
+				 width="100%" height="100%"
+				 PAGE_SHOW="reset()" creationComplete="init()">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCException;
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.util.RendererUtil;
+			import com.viewscenes.beans.dicManager.AntennaBean;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+			
+			import mx.collections.ArrayCollection;
+			
+			import spark.events.GridEvent;
+			import spark.events.ListEvent;
+			//发射台
+			[Bindable]
+			private var stationArr:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			private var antennaArr:ArrayCollection = new ArrayCollection();
+			[Bindable] private var selectedCounts:int=0;
+			private var antennaID:String="";
+			
+			private function init():void{
+				queryStation();
+			}
+			private function reset():void{
+				queryStation();
+			}
+			/**
+			 * 查询发射台信息
+			 * */
+			private function queryStation():void{
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getStationList",null,getStationListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getStationListBack(arr:ArrayCollection):void{
+				stationArr.removeAll();
+				stationArr = arr;
+				stationArr.addItemAt({name:"全部",id:""},0);
+				station.selectedIndex = 0;
+			}
+			/**
+			 * 添加天线参数信息
+			 * */
+			public function addAntenna():void{
+				var msg:String="";
+				if(station.selectedItem.name=="全部"){
+					msg+="请选择发射台!\r";
+				}
+				if(antenna_no.text==""){
+					msg+="天线号不能为空 !\r";
+				}
+				if(antenna_mode.text==""){
+					msg+="天线程式不能为空!\r";
+				}
+				if(itu.text==""){
+					msg+="ITU代码不能为空!\r";
+				}
+				if(direction.text==""){
+					msg+="方向不能为空!";
+				}
+				if(msg!=""){
+					DataManager.showErrorMessage(msg);
+					return;
+				}
+			
+				var bean:AntennaBean = new AntennaBean();
+				bean.station_name = station.selectedItem.name;
+				bean.antenna_no = antenna_no.text;
+				bean.antenna_mode = antenna_mode.text;
+				bean.itu = itu.text;
+				bean.direction = direction.text;
+				bean.service_area = service_area.text;
+				bean.ciraf = ciraf.text;
+				bean.address = address.text;
+				bean.shiypd = shiybd.text;
+				bean.remark = remark.text;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dicManager.AntennaManager","addAntenna",bean,addAntennaBack,DataManager.showErrorMessageBack));
+				
+			}
+			
+			private function addAntennaBack(res:String):void{
+				DataManager.showErrorMessage(res);
+				queryAntenna();
+			}
+			/**
+			 * 查询天线参数表信息
+			 * */
+			private function queryAntenna():void{
+				antennaID="";
+				selectedCounts=0;
+				btn1.label="全选";
+				antennaArr.removeAll();
+				clew_label.visible=true;
+				clew_label.includeInLayout=true;
+				var bean:AntennaBean = new AntennaBean();
+				bean.station_name = station.selectedItem.name;
+				bean.antenna_no=antenna_no.text;
+				bean.antenna_mode= antenna_mode.text;
+				bean.itu = itu.text;
+				bean.direction = direction.text;
+				bean.service_area = service_area.text;
+				var request:RORequestParam =new RORequestParam("com.viewscenes.web.dicManager.AntennaManager","queryAntenna",bean,queryAntennaBack,DataManager.showErrorMessageBack);
+				pagebar.m_sendCmd(request);
+			}
+			
+			private function queryAntennaBack(arr:ArrayCollection):void{
+				//DataManager.showErrorMessage(arr.length+"")
+				if(arr.length==0){
+					clew_label.text="无相关查询数据";
+				}else{
+					clew_label.visible=false;
+					clew_label.includeInLayout=false;
+				    antennaArr=arr;
+				}
+			}
+			/**
+			 * 修改天线参数信息
+			 * */
+			private function updateAntenna():void{
+				
+				if(antennaID==""){
+					DataManager.showErrorMessage("没有需要修改的项!")
+					return;
+				}else{
+					var msg:String=""
+					if(station.selectedItem.name=="全部"){
+						msg+="请选择发射台!\r";
+					}
+					if(antenna_no.text==""){
+						msg+="天线号不能为空 !\r";
+					}
+					if(antenna_mode.text==""){
+						msg+="天线程式不能为空!\r";
+					}
+					if(itu.text==""){
+						msg+="ITU代码不能为空!\r";
+					}
+					if(direction.text==""){
+						msg+="方向不能为空!";
+					}
+					if(msg!=""){
+						DataManager.showErrorMessage(msg);
+						return;
+					}
+					var bean:AntennaBean = new AntennaBean();
+					bean.id = antennaID;
+					bean.station_name = station.selectedItem.name;
+					bean.antenna_no = antenna_no.text;
+					bean.antenna_mode = antenna_mode.text;
+					bean.itu = itu.text;
+					bean.direction = direction.text;
+					bean.service_area = service_area.text;
+					bean.ciraf = ciraf.text;
+					bean.address = address.text;
+					bean.shiypd = shiybd.text;
+					bean.remark = remark.text;
+					RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dicManager.AntennaManager","updateAntenna",bean,updateAntennaBack,DataManager.showErrorMessageBack));
+				}
+			}
+			
+			private function updateAntennaBack(res:String):void{
+				antennaID="";
+				DataManager.showErrorMessage(res);
+				queryAntenna()
+			}
+			
+			/**
+			 * 删除天线参数信息
+			 * */
+			public var antennaIDs:String="";
+			private function delAntenna():void{
+				
+				for(var i:int=0;i<antennaArr.length;i++){
+					var obj:Object = new Object();
+					obj = antennaArr.getItemAt(i) as Object;
+					if(obj.isSelected=="true"){
+						antennaIDs+=obj.id+",";
+					}
+				}
+				if(antennaIDs!=""){
+					MM.show("您确定要删除吗?","删除天线参数",'',confirmDel,true,null,null);
+				}else{
+					DataManager.showErrorMessage("请选择要删除的项!");
+					return;
+				}
+				
+			}
+			
+			private function confirmDel():void{
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dicManager.AntennaManager","delAntenna",antennaIDs.substr(0,antennaIDs.length-1),delRunplanBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function delRunplanBack(res:String):void{
+				antennaIDs="";
+				DataManager.showErrorMessage(res);
+				queryAntenna();
+			}
+			
+			/**
+			 * 点击datagrid某行数据触发的方法
+			 * */
+			private function onGridClick(event:GridEvent):void{
+				if(grid.dataProvider.length==0){
+					return;
+				}else{
+					if(event.columnIndex==0||event.item==null){
+						return;
+					}else{
+						antennaID=grid.selectedItem.id;
+						
+						for(var i:int=0;i<stationArr.length;i++){
+							if(stationArr[i].name==grid.selectedItem.station_name){
+								station.selectedIndex=i;
+							}
+						}
+
+						antenna_no.text = grid.selectedItem.antenna_no;
+						antenna_mode.text = grid.selectedItem.antenna_mode;
+						itu.text = grid.selectedItem.itu;
+						direction.text = grid.selectedItem.direction;
+						service_area.text = grid.selectedItem.service_area;
+						ciraf.text = grid.selectedItem.ciraf;
+						address.text = grid.selectedItem.address;
+						shiybd.text = grid.selectedItem.shiypd;
+						remark.text = grid.selectedItem.remark;
+						
+					}
+				}
+			}
+			//选择点中后执行的方法
+			private function changeSelect(obj:Object):void{
+				btn1.label="全选";
+				if(obj.data.isSelected=="true"){
+					this.selectedCounts=selectedCounts+1;  
+				}else{
+					this.selectedCounts=selectedCounts-1; 
+				}
+				if(selectedCounts==antennaArr.length){					
+					btn1.label="取消全选";
+				}
+			}
+			
+			/**
+			 * 全选操作
+			 * */
+			private var selectState:Boolean = false;// 记录选中的状态
+			
+			private function selectAll():void{
+				if(btn1.label=="全选"){
+					btn1.label="取消全选";
+					selectState=true;
+					selectedCounts=antennaArr.length
+				}else{
+					btn1.label="全选";
+					selectState=false;
+					selectedCounts=0;
+				}
+				for(var i:int=0;i<antennaArr.length;i++){
+					var obj:Object = antennaArr.getItemAt(i) as Object;
+					obj.isSelected=selectState;
+				}
+				antennaArr.refresh();
+				
+			}
+			
+			private function reSet():void{
+				station.selectedIndex=0
+				antenna_no.text = "";
+				antenna_mode.text = "";
+				itu.text ="";
+				direction.text = "";
+				service_area.text = "";
+				ciraf.text = "";
+				address.text = "";
+				shiybd.text = "";
+				remark.text = "";			
+			}
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%" verticalAlign="middle" horizontalAlign="center">
+		<s:HGroup height="25" width="100%" verticalAlign="middle" >
+			<s:Label text="发  射  台"/>
+			<s:DropDownList id="station" width="100" dataProvider="{stationArr}" labelField="name"/>
+			<s:Label text="天线号"/>
+			<s:TextInput width="80" id="antenna_no"/>
+			<s:Label text="天线程式"/>
+			<s:TextInput width="80" id="antenna_mode"/>
+			<s:Label text="ITU代码"/>
+			<s:TextInput width="80" id="itu" />
+			<s:Label text="方向"/>
+			<s:TextInput width="80" id="direction"/>
+			<s:Label text="服务区"/>
+			<s:TextInput width="80" id="service_area"/>
+			<s:Label text="CIRAF区"/>
+			<s:TextInput width="80" id="ciraf"/>			
+			
+		</s:HGroup>
+		<mx:HRule width="100%" strokeWidth="1" strokeColor="#a0a0a0" shadowColor="#000000" />
+		<s:HGroup height="25" width="100%" verticalAlign="middle" >
+			<s:Label text="地点"/>
+			<s:TextInput width="100" id="address"/>
+			<s:Label text="适用频段"/>
+			<s:TextInput width="100" id="shiybd"/>
+			<s:Label text="备  注"/>
+			<s:TextInput width="150" id="remark"/>
+			<s:Spacer width="100%"/>
+			<s:Button buttonMode="true" label="增加" click="addAntenna()"/>
+			<s:Button buttonMode="true" label="查询" click="queryAntenna()"/>
+			<s:Button buttonMode="true" label="修改" click="updateAntenna()"/>
+			<s:Button buttonMode="true" label="全选" id="btn1" click="selectAll()"/>
+			<s:Button buttonMode="true" label="删除" click="delAntenna()"/>
+			<s:Button buttonMode="true" label="重置" click="reSet()"/>
+		</s:HGroup>
+		<mx:Canvas  width="100%" height="100%">
+			<s:DataGrid width="100%" height="100%" gridClick="onGridClick(event)"  id="grid" textAlign="center" dataProvider="{antennaArr}">
+				<s:columns>
+					<s:ArrayCollection>
+						<s:GridColumn headerText="选择" width="60" editable="false" itemRenderer="{RendererUtil.getCheckBoxRenderer(changeSelect)}" />
+						<s:GridColumn dataField="station_name"  headerText="发射台" />
+						<s:GridColumn dataField="antenna_no"  headerText="天线号" />
+						<s:GridColumn dataField="antenna_mode"  headerText="天线程式" />
+						<s:GridColumn dataField="itu" headerText="ITU代码" />
+						<s:GridColumn dataField="direction"  headerText="方向"/>
+						<s:GridColumn dataField="service_area"  headerText="服务区" />
+						<s:GridColumn dataField="ciraf"  headerText="CIRAF区" />
+						<s:GridColumn dataField="address"  headerText="地点" />
+						<s:GridColumn dataField="shiypd"  headerText="适用频段" />
+						<s:GridColumn dataField="remark" headerText="备注"/>
+					</s:ArrayCollection>
+				</s:columns>
+			</s:DataGrid>
+			<s:Label text="正在查询，请稍候..." id="clew_label" y="{grid.columnHeaderGroup.height+10}" color="0x000000" fontSize="15" width="100%" textAlign="center"  visible="false" includeInLayout="false" />
+		</mx:Canvas>	
+		<flipBar:PageBar width="100%" id="pagebar" rowConutOfPage="40" totalPageQuery="5" height="20"/>
+
+	</s:VGroup>
+</system:BasePage>

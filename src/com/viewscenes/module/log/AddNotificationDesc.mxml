@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow close="onClose()" title="新增通知详细信息" textAlign="center"
+			   xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" 
+			   width="100%"	
+			   height="100%"
+			   fontSize="12"
+			   mouseDown="startDrag()"
+			   mouseUp="stopDrag();" 
+			   creationComplete="init()"	   
+			   xmlns:timecomp="com.viewscenes.utils.timecomp.*" 
+			   xmlns:checkbox="com.viewscenes.global.comp.checkbox.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.frame.system.AdvancedEvent;
+			import com.morcha4.frame.system.EventBus;
+			import com.viewscenes.beans.log.NotificationBean;
+
+			import com.viewscenes.beans.user.PubRoleBean;
+			import com.viewscenes.global.DataManager;
+
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.managers.PopUpManager;
+			
+
+			private var roleCollection:ArrayCollection = new ArrayCollection();
+			
+			public  var logdesc:NotificationBean = new NotificationBean();
+			
+			private function init():void{
+				getRoleList();
+			}
+			private function getRoleList():void{
+				if(this.roleCollection.length!=0)
+					return;
+				var obj:Object = new Object;
+				
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.sysmgr.user.PubUserManagerService","getRoleList",obj,getRoleListReturn,DataManager.showErrorMessageBack));
+				
+			}
+		
+			private function getRoleListReturn(relist:ArrayCollection):void{
+				roleCollection.removeAll();
+				for(var i:int=0;i<relist.length;i++)
+				{
+					var role:PubRoleBean=relist.getItemAt(i) as PubRoleBean;
+					var one:Object=new Object();
+					one.label=role.name;
+					one.value=role.role_id;
+					roleCollection.addItem(one);
+				
+			
+				}
+				osendUser.dataProvider=	roleCollection;
+				if(logdesc.id.length!=0)
+				{
+				  
+					this.desc.text=logdesc.description;
+					this.osendUser.setText(logdesc.to_userid,"value");
+					this.valid_startdatetime.text=logdesc.start_time;
+					this.valid_enddatetime.text=logdesc.end_time;
+				}
+	
+			}
+
+			private function onClose():void{						
+				PopUpManager.removePopUp(this);
+			}
+
+			private function updateTask():void{
+				
+				if(desc.text.length==0)
+				{
+					DataManager.showErrorMessage("通知详细不能为空！");
+					this.desc.getFocus();
+					return;
+				}
+				
+				var log:NotificationBean=new NotificationBean();
+				log.id=logdesc.id;
+				log.description=desc.text;
+				log.start_time=this.valid_startdatetime.text;
+				log.from_userid=DataManager.user.userId;
+				log.from_username=DataManager.user.userName;
+				log.end_time=this.valid_enddatetime.text;
+				log.to_userid=this.osendUser.getText("value");
+				log.to_username=this.osendUser.getText("label");
+				//log.msg_checked = this.msgCheck.selected.toString();
+				
+				var request:RORequestParam = new RORequestParam("com.viewscenes.web.log.Log","addAndUpdateLogList",log,addAndUpdateLogListProcess,DataManager.showErrorMessageBack);
+				RPCManager.sendCmd(request); 
+				
+			}
+			private function addAndUpdateLogListProcess(str:String):void{
+				
+				DataManager.showErrorMessage(str);
+				
+				PopUpManager.removePopUp(this);
+		
+				EventBus.dispatchEvent(new AdvancedEvent("refrushLogQuery"));
+			}
+			
+		]]>
+	</fx:Script>
+	
+	
+	<s:VGroup  gap="10" horizontalAlign="left"  paddingLeft="10"  paddingTop="20" width="100%" height="100%" verticalAlign="middle" mouseDown="event.stopImmediatePropagation();">
+		
+		
+		<s:HGroup gap="10">
+			<s:Label text="通知详细信息 ："  textAlign="right"/> 
+			<s:TextArea id="desc" color="#000000" textAlign="left" width="400" height="200">
+				
+			</s:TextArea>
+		</s:HGroup>
+		<s:HGroup gap="10">
+			<s:Label text="通知下达群体 ：" textAlign="right"/> 
+			<checkbox:CheckDropList id="osendUser"     width="400" />
+		</s:HGroup>
+
+		<s:HGroup gap="10" verticalAlign="middle">  
+			<s:Label  text="有效期开始时间：" textAlign="right"> </s:Label>
+			<timecomp:TimeNew id="valid_startdatetime" dateDisplay="date"/>
+			<s:Label  text="有效期结束时间："> </s:Label>
+			<timecomp:TimeNew id="valid_enddatetime" dateDisplay="date"/>
+		</s:HGroup>
+		<!--s:HGroup gap="10">
+			<s:CheckBox id="msgCheck" horizontalCenter="top"/>
+			<s:Label text="发送短信"  textAlign="left"/> 
+		</s:HGroup-->		
+		<s:HGroup width="100%" height="25" horizontalAlign="center" verticalAlign="middle">
+			<s:Button buttonMode="true" label="确定" click="updateTask()"/>
+		</s:HGroup>
+		
+	</s:VGroup>	
+</s:TitleWindow>		

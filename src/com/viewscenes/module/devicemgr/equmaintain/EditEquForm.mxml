@@ -1,0 +1,494 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" close="close(event);"
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%"
+			   creationComplete="init();" 
+			   xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+			   xmlns:ip="com.viewscenes.utils.tools.*"
+			   xmlns:global="com.viewscenes.global.*"
+			   xmlns:checkbox="com.viewscenes.global.comp.checkbox.*"
+			   mouseDown="startDrag()"
+			   title="修改设备维护信息"
+			   mouseUp="stopDrag();">
+	<s:layout>
+		<s:FormItemLayout/>
+	</s:layout>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.viewscenes.beans.devicemgr.RadioEquBean;
+			import com.viewscenes.beans.pub.ResHeadendBean;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+			import com.viewscenes.utils.timecomp.DateUtil;
+			
+			import mx.collections.ArrayCollection;
+			import mx.core.FlexGlobals;
+			import mx.managers.PopUpManager;
+			import mx.olap.aggregators.CountAggregator;
+			[Bindable]
+			private var fileRe:FileReference = new FileReference();//上传图片。
+			[Bindable]
+			private var fileRecord:FileReference=new FileReference();
+			[Bindable]
+			private var beanflag2:RadioEquBean = new RadioEquBean();
+			[Bindable]
+			private var oldRecord_path:String="";
+			[Bindable]
+			private var issummer:ArrayCollection = new ArrayCollection([{label:"无夏令",code:0},{label:"有夏令",code:1}]);
+			[Bindable]
+			private var replaceArr:ArrayCollection=new ArrayCollection([{label:"是"},{label:"否"}]);
+
+			[Bindable]
+			private var lineArray:ArrayCollection = new ArrayCollection([{label:"不在线",code:0},{label:"在线",code:1}]);
+			
+			[Bindable]private var typeArray:ArrayCollection = new ArrayCollection([{label:"遥控站",value:"102"},{label:"采集点",value:"101"}]);
+			[Bindable]
+			private var equFromArr:ArrayCollection=new ArrayCollection([{label:"邮寄",value:"0"},{label:"站点备件",value:"1"}]);
+
+			[Bindable]
+			private var weihuArray:ArrayCollection = new ArrayCollection([{label:"外出维护",value:"外出维护"},{label:"台内维护",value:"台内维护"}]);
+			[Bindable]
+			private var placeArr:ArrayCollection=new ArrayCollection([{label:"站点保存",value:"0"},{label:"报废处理",value:"1"}]);
+			[Bindable]
+			private var statusArr1:ArrayCollection=new ArrayCollection([{label:"可修复",value:"2"},{label:"不可修复",value:"4"},{label:"已报废",value:"3"}]);
+			[Bindable]
+			private var statusArr2:ArrayCollection=new ArrayCollection([{label:"不可修复",value:"4"},{label:"已报废",value:"3"}]);
+			//站点
+			[Bindable]
+			public var headendArr:ArrayCollection = new ArrayCollection;
+			[Bindable]
+			private var pic:String="";
+			[Bindable]
+			private var guzhangArray:ArrayCollection = 
+				new ArrayCollection([{label:"供电",value:"供电"},
+					{label:"接收机",value:"接收机"},					  
+					{label:"天线",value:"天线"},
+					{label:"UPS设备",value:"UPS设备"},
+					{label:"路由",value:"路由"},
+					{label:"网络",value:"网络"},
+					{label:"其他",value:"其他"}]);
+			[Bindable]
+			private var bianhaoArray:ArrayCollection =
+				new ArrayCollection([{label:"NI-1000",value:"NI-1000"},
+					{label:"BXM-252A-1",value:"BXM-252A-1"},
+					{label:"BXM-252A-2",value:"BXM-252A-2"},
+					{label:"SDR-1",value:"SDR-1"},
+					{label:"SDR-2",value:"SDR-2"}
+				]);
+			
+			private function init():void{
+				
+			}
+		
+			public function setEqu(obj:Object):void{
+
+
+				beanflag2.id=obj.id;
+				beanflag2.head_name=obj.head_name;
+				beanflag2.head_id=obj.head_id;
+				beanflag2.installation=obj.installation;
+				beanflag2.use_case=obj.use_case;
+				beanflag2.fault=obj.fault;
+				beanflag2.replacement=obj.replacement
+				beanflag2.maintain=obj.maintain;
+				beanflag2.equ_number=obj.equ_number;
+				beanflag2.equ_id=obj.equ_id;
+				beanflag2.head_code=obj.head_code;
+				beanflag2.main_datetime=obj.main_datetime;
+				beanflag2.pic_path=obj.pic_path;
+				beanflag2.start_time=obj.start_time;
+				beanflag2.end_time=obj.end_time;
+				beanflag2.resault=obj.resault;
+				beanflag2.country=obj.country;
+				beanflag2.state_name=obj.state_name;
+				beanflag2.person=obj.person;
+				beanflag2.record_path=obj.record_path;
+				beanflag2.old_equ=obj.old_equ;
+				beanflag2.old_place=obj.old_place;
+				beanflag2.old_status=obj.old_status;
+				beanflag2.new_equ=obj.new_equ;
+				beanflag2.new_from=obj.new_from;
+				beanflag2.mail_order=obj.mail_order;
+				beanflag2.mail_time=obj.mail_time;
+				this.shortname.text=beanflag2.head_name;
+				start_time.text=beanflag2.start_time;
+				end_time.text=beanflag2.end_time;
+				resault.text=beanflag2.resault;
+				country.text=beanflag2.country;
+				state.text=beanflag2.state_name;
+				for(var i:int=0;i<guzhangArray.length;i++)
+				{
+					if(beanflag2.fault==guzhangArray[i].value)
+					{
+						this.fault.selectedIndex=i;
+						break;
+					}
+				}
+				for(var i:int=0;i<weihuArray.length;i++)
+				{
+					if(beanflag2.maintain==weihuArray[i].value)
+					{
+						this.maintain.selectedIndex=i;
+						break;
+					}
+				}
+				if(beanflag2.equ_id!=""&&beanflag2.equ_id.length!=0){
+					replace.selectedIndex=0;
+					if(fault.selectedIndex==1){
+						for(var i:int=0;i<bianhaoArray.length;i++)
+						{
+							if(beanflag2.equ_id==bianhaoArray[i].value)
+							{
+								this.equ_id.selectedIndex=i;
+								break;
+							}
+						}
+					}else{
+						this.equ_id1.text=beanflag2.equ_id;
+					}
+					this.old_equ.text=beanflag2.old_equ;
+					this.new_equ.text=beanflag2.new_equ;
+					
+					
+					for(i=0;i<equFromArr.length;i++){
+						if(beanflag2.new_from==equFromArr.getItemAt(i).value){
+							new_from.selectedIndex=i;
+						}
+					}
+					if(new_from.selectedIndex==0){
+						this.mail_order.text=beanflag2.mail_order;
+						this.mail_time.text=beanflag2.mail_time;
+					}
+					for(i=0;i<placeArr.length;i++){
+						if(beanflag2.old_place==placeArr.getItemAt(i).value){
+							old_place.selectedIndex=i;
+						}
+					}
+					savePlaceChange();
+					for(i=0;i<old_status.dataProvider.length;i++){
+						if(beanflag2.old_status==old_status.dataProvider.getItemAt(i).value){
+							old_status.selectedIndex=i;
+						}
+					}
+				}else{
+					replace.selectedIndex=1;	
+				}
+				repalceChange();
+				equfromChange();
+				setRecordPath(beanflag2.record_path);
+				
+			}
+
+			
+			private function updatEqu():void{
+				
+				if(isOK()){
+					return ;
+				}
+				if(beanflag2.head_code.length==5||beanflag2.head_name=="蒙罗维"){
+					
+				}else if(equ_id.selectedItem.value=="NI-1000")
+				{
+					beanflag2.head_id=DataManager.getHeadendByName(this.shortname.text+"A").head_id;
+					beanflag2.head_code=beanflag2.head_code.substr(0,beanflag2.head_code.length-1) +"A";
+				}else
+				{
+					beanflag2.head_id=DataManager.getHeadendByName(this.shortname.text+"B").head_id;
+					beanflag2.head_code=beanflag2.head_code.substr(0,beanflag2.head_code.length-1)+"B";
+				}
+//				beanflag2.installation =installation.text;
+//				beanflag2.use_case =use_case.text;
+				
+				beanflag2.fault =fault.selectedItem.value;
+//				beanflag2.replacement =replacement.text;
+				beanflag2.maintain =maintain.selectedItem.value;
+//				beanflag2.equ_number =equ_number.text;
+				if(replace.selectedIndex==1){
+					beanflag2.equ_id="";
+				}else{
+					if(fault.selectedIndex==1){
+						beanflag2.equ_id=equ_id.selectedItem.label;
+					}else{
+						beanflag2.equ_id=equ_id1.text;
+					}
+					beanflag2.old_equ=old_equ.text;
+					beanflag2.old_place=old_place.selectedItem.value;
+					beanflag2.old_status=old_status.selectedItem.value;
+					beanflag2.new_equ=new_equ.text;
+					beanflag2.new_from=new_from.selectedItem.value;
+					if(new_from.selectedIndex==0){
+						beanflag2.mail_order=mail_order.text;
+						beanflag2.mail_time=mail_time.text;
+					}else{
+						beanflag2.mail_order="";
+						beanflag2.mail_time="";
+					}
+				}
+				beanflag2.start_time=start_time.text;
+				beanflag2.end_time=end_time.text;
+				beanflag2.resault=resault.text;
+				beanflag2.person=DataManager.user.userName;
+//				beanflag2.main_datetime =main_datetime.text;
+//				if(pic.length!=0){
+//					beanflag2.pic_path=this.fileRe.name;
+//				}
+				
+				beanflag2.record_path=record_path.text;
+				
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.devicemgr.equmaintain.EquMaintain","updatEquBean",beanflag2,_addEqu,_addEqu));
+			}
+			
+			public function _addEqu(res:String):void{
+				
+				DataManager.showErrorMessage(res);
+				this.dispatchEvent(new Event("Equ_list_refresh"));
+				close(null);
+			}
+			
+			private function close(e:Event):void{
+				//dispatchEvent(new AdvancedEvent("EquListRefresh",true,false,null));
+				PopUpManager.removePopUp(this);
+				
+			}
+			private function isOK():Boolean{
+
+				
+				if(replace.selectedIndex==0&&fault.selectedIndex!=1&&equ_id1.text==""){
+					MM.show("更换设备不能为空,请添加");
+					return true;
+				}
+				//				if(pic.length==0){
+				//					MM.show("请先上传维护图片")
+				//					return true;
+				//				}
+				return false;
+			}
+			private function upLoadFiles():void
+			{	
+				pic="";
+				fileRe.addEventListener(Event.SELECT,selectHandler);
+				fileRe.addEventListener(Event.COMPLETE,processResult);
+				var arr:Array = [];
+				arr.push(new FileFilter("Images", ".gif;*.jpeg;*.jpg;*.png"));
+				
+				fileRe.browse(arr);
+			}
+			private function selectHandler(event:Event):void{
+				//根据URL执行文件上传，请求到后台Java的Servlet
+				
+				var sysurl:String = FlexGlobals.topLevelApplication.url;
+				var index:int = sysurl.lastIndexOf("/");
+				var url:String = sysurl.substring(0,index);
+				var urlStr:String=url+"/pictureServlet";
+				var r:URLRequest=new URLRequest(urlStr);
+				fileRe.upload(r);//第二个参数指定文件域的名字，默认为Filedata       
+				//提交三个参数Filename,Filedata,Upload                
+			}
+			
+			private function processResult(event:Event):void{
+//				img.source = fileRe.data;
+//				pic="upLoadOk";
+//				fileRe.load();
+			}
+			private function repalceChange():void{
+				if(replace.selectedIndex==1){
+					equ2.visible=false;
+					equ2.includeInLayout=false;
+					equ3.visible=false;
+					equ3.includeInLayout=false;
+				}else{
+					equ2.visible=true;
+					equ2.includeInLayout=true;
+					equ3.visible=true;
+					equ3.includeInLayout=true;
+					if(fault.selectedIndex==1){
+						equ.visible=true;
+						equ.includeInLayout=true;
+						equ1.visible=false;
+						equ1.includeInLayout=false;
+					}else{
+						equ1.visible=true;
+						equ1.includeInLayout=true;
+						equ.visible=false;
+						equ.includeInLayout=false;
+					}
+				}
+			}
+			private function equfromChange():void{
+				if(new_from.selectedIndex==0){
+					mail1.visible=true;
+					mail1.includeInLayout=true;
+					mail2.visible=true;
+					mail2.includeInLayout=true;
+				}else{
+					mail1.visible=false;
+					mail1.includeInLayout=false;
+					mail2.visible=false;
+					mail2.includeInLayout=false;
+				}
+			}
+			private function openRecordFrom():void{
+				var pop:EquRecordForm=EquRecordForm(PopUpManager.createPopUp(this,EquRecordForm,true));
+				pop.parenter=this;
+				PopUpManager.centerPopUp(pop);
+			}
+			public function setRecordPath(str:String):void{
+				record_path.text=str;
+				var pathWidth:int=record_path.measureText(str).width;
+				if(pathWidth>record_path.width){
+					record_path.toolTip=str;
+				}else{
+					record_path.toolTip="";
+				}
+			}
+			private function savePlaceChange():void{
+				if(old_place.selectedIndex==0){
+					old_status.dataProvider=statusArr1;
+					
+				}else{
+					old_status.dataProvider=statusArr2;
+					
+				}
+				old_status.selectedIndex=0;
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	
+	<s:HGroup width="100%"  horizontalAlign="right" verticalAlign="middle">
+		<s:VGroup width="100%" height="100%" horizontalAlign="right" verticalAlign="middle">
+			<s:Form>			
+				<!--s:FormItem label="类 别" height="20">
+					<s:ComboBox id="Type"  dataProvider="{typeArray}" change="TypeChange()" requireSelection="true" height="25" width="120"/>
+					<s:TextInput id="Type" text="{EquObj.installation}"  change="{EquObj.installation=installation.text}"/>
+				</s:FormItem>
+				<s:FormItem label="站点代码 " height="20">
+					<global:HeadendList id="station"   height="25" width="160"/>
+					<s:TextInput id="Type" text="{EquObj.installation}"  change="{EquObj.installation=installation.text}"/>
+				</s:FormItem-->
+				<s:FormItem label="站 点 名 称" height="20">
+					<s:TextInput id="shortname" text="{beanflag2.head_name}" editable="false"  />
+				</s:FormItem>
+				<s:FormItem label="  国   家 " height="20">
+					<s:TextInput id="country"   editable="false"/>
+				</s:FormItem>
+				<s:FormItem label="  大   洲" height="20">
+					<s:TextInput id="state"   editable="false" />
+				</s:FormItem>
+				<!--s:FormItem label="安装情况" height="20">
+					<s:TextInput id="installation" text="{beanflag2.installation}"   change="{beanflag2.installation=installation.text}"/>
+				</s:FormItem>
+				<s:FormItem label="使用情况" height="20">
+					<s:TextInput id="use_case" text="{beanflag2.use_case}"   change="{beanflag2.use_case=use_case.text}"/>
+				</s:FormItem-->
+				<s:FormItem label="维护类型" height="20">
+					<!--s:TextInput id="maintain" change="{EquObj.maintain=maintain.text}"/-->
+					<s:ComboBox id="maintain"  dataProvider="{weihuArray}"  change="{beanflag2.maintain=maintain..selectedItem.value}" requireSelection="true" height="25" />
+					
+				</s:FormItem>
+				<s:FormItem label="故 障 类 型"  height="20">
+					<s:ComboBox id="fault"  dataProvider="{guzhangArray}"  requireSelection="true" height="25"  change="repalceChange()"/>					
+				</s:FormItem>
+				<s:FormItem label="故障开始时间"  height="20">
+					<timecomp:TimeNew id="start_time"        height="25" />					
+				</s:FormItem>
+				<s:FormItem label="故障结束时间"  height="20">
+					<timecomp:TimeNew id="end_time"       height="25" />				
+				</s:FormItem>
+				
+				<!--s:FormItem label="更换情况"  height="20">
+					<s:TextInput id="replacement" text="{beanflag2.replacement}"   change="{beanflag2.replacement=replacement.text}"/>
+				</s:FormItem>
+				
+				
+				<s:FormItem label="设备数量"  height="20">
+					<s:TextInput id="equ_number" text="{beanflag2.equ_number}"   change="{beanflag2.equ_number=equ_number.text}" restrict="0-9\"/>
+				</s:FormItem-->
+				<s:FormItem label="是否更换设备"  height="20">
+					<s:ComboBox id="replace"   dataProvider="{replaceArr}"  requireSelection="true" change="repalceChange()" />
+				</s:FormItem>
+				<!--s:FormItem label="维护时间"  height="20">
+					<timecomp:TimeNew id="main_datetime" text="{beanflag2.main_datetime}"   TimeNewChanged="{beanflag2.main_datetime=main_datetime.text}"/>
+				</s:FormItem-->
+				<s:FormItem label="处 理 结 果"  height="20">
+					<s:TextInput id="resault"    />
+				</s:FormItem>
+				<s:FormItem label="录 音 文 件"  height="20">
+					<s:TextInput id="record_path"    editable="false"/>
+				</s:FormItem>
+				<s:FormItem label="选择录音文件"  height="20">
+					<s:Button label="选择录音文件" click="openRecordFrom()"/>
+				</s:FormItem>
+			</s:Form>
+			<!--s:FormItem  height="20">
+				
+				
+				<s:Panel id="panel"
+						 
+						 horizontalCenter="0"
+						 verticalCenter="0"
+						 width="500"
+						 height="300">
+					<s:Image id="img"
+							 verticalCenter="0"
+							 horizontalCenter="0"
+							 maxWidth="300"
+							 maxHeight="200" />
+					
+					<s:Button id="btn"
+							  label="上传图片"
+							  click="upLoadFiles();" />
+					
+					
+				</s:Panel>
+				
+				
+			</s:FormItem-->
+			</s:VGroup>
+			<s:VGroup  height="100%" horizontalAlign="center" verticalAlign="bottom">	
+				<s:Label id="equ3" text="更换设备信息" />
+				<s:Form id="equ2">				
+					<s:FormItem id="equ"  label="更 换 设 备"  height="20">
+						<s:ComboBox id="equ_id"   dataProvider="{bianhaoArray}"   requireSelection="true" />				
+					</s:FormItem>
+					<s:FormItem id="equ1"  label="更 换 设 备" height="20">
+						<s:TextInput id="equ_id1"   />				
+					</s:FormItem>
+					<s:FormItem label="旧设备编号" height="20">
+						<s:TextInput id="old_equ"  />	
+					</s:FormItem>
+					<s:FormItem label="旧设备去向" height="20">
+						<s:ComboBox  id="old_place" dataProvider="{placeArr}" change="savePlaceChange"/>
+					</s:FormItem>
+					<s:FormItem label="旧设备状态" height="20">
+						<s:ComboBox id="old_status"  dataProvider="{statusArr1}"/>
+					</s:FormItem>
+					<s:FormItem label="新设备编号" height="20">
+						<s:TextInput  id="new_equ" />
+					</s:FormItem>
+					<s:FormItem label="新设备来源" height="20">
+						<s:ComboBox id="new_from" dataProvider="{equFromArr}" requireSelection="true" change="equfromChange()"/>
+					</s:FormItem>			
+					<s:FormItem id="mail1" label="邮件单号" height="20">
+						<s:TextInput id="mail_order"  />
+					</s:FormItem>
+					<s:FormItem id="mail2" label="邮寄时间" height="20">
+						<timecomp:TimeNew id="mail_time" />
+					</s:FormItem>
+					
+				</s:Form>
+				<s:HGroup width="100%"  horizontalAlign="center" verticalAlign="middle" height="30">
+					<s:Button buttonMode="true" label="确认修改" click="updatEqu();"/>
+					<s:Button buttonMode="true" label="取消修改" click="close(event)"/>
+				</s:HGroup>
+			
+		</s:VGroup>
+	</s:HGroup> 
+	
+	
+</s:TitleWindow>

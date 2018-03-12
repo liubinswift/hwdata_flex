@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" 
+			    xmlns:checkbox="com.viewscenes.global.comp.checkbox.*" >   
+	<s:layout>
+		<s:VerticalLayout  horizontalAlign="left" gap="20"/>
+	</s:layout>   
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			[Bindable]
+			private var coll:ArrayCollection = new ArrayCollection([{label:"全选",value:"all"},
+				{label:"liu",value:"2",selected:true},
+				{label:"dong",value:"3",selected:true},
+				{label:"xixi",value:"4",selected:true},
+				{label:"feng",value:"7"},
+				{label:"feng",value:"7",selected:true},
+				{label:"feng",value:"7"},
+				{label:"feng",value:"7",selected:true},
+				{label:"feng",value:"7"},
+				{label:"feng",value:"7",selected:true},
+				{label:"feng",value:"7"},
+				{label:"feng",value:"7",selected:true},
+				{label:"feng",value:"7"},
+				{label:"feng",value:"7"},
+				{label:"feng",value:"7"},
+				{label:"feng",value:"7"},
+				{label:"feng",value:"7"}
+				
+			]);
+			
+			protected function getValue(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				var arr:Array = mlist.selectItems;
+				var str:String = "";
+				for(var i:int=0;i<arr.length;i++){
+					str += arr[i].value+"|";
+				}
+				Alert.show(str);
+			}
+			
+		]]>
+	</fx:Script>
+	<checkbox:CheckDropList dataProvider="{coll}"  width="500"  id="mlist"/>
+	<s:Button buttonMode="true" label="test" click="getValue(event)"/>
+	<s:TitleWindow width="250" height="200" backgroundColor="#AE2626" id="cc">
+	</s:TitleWindow> 
+	
+	<mx:AdvancedDataGrid width="100%" height="100%" id="adv" includeInLayout="true" visible="true" textAlign="center"   sortExpertMode="true">
+		<mx:groupedColumns>
+			<mx:AdvancedDataGridColumnGroup headerText="台名" id="head" dataField="station">
+			</mx:AdvancedDataGridColumnGroup>
+			<mx:AdvancedDataGridColumnGroup headerText="播出统计">
+				<mx:AdvancedDataGridColumn headerText="频率数" dataField="bc_freq" />
+				<mx:AdvancedDataGridColumn headerText="频时数" dataField="bc_hours"/>
+			</mx:AdvancedDataGridColumnGroup>
+			<mx:AdvancedDataGridColumnGroup headerText="质量收测统计">
+				<mx:AdvancedDataGridColumn headerText="频率数" dataField="sc_freq" />
+				<mx:AdvancedDataGridColumn headerText="频时数" dataField="sc_hours" />
+			</mx:AdvancedDataGridColumnGroup>
+			<mx:AdvancedDataGridColumnGroup headerText="效果收测统计">
+				<mx:AdvancedDataGridColumn headerText="频率数" dataField="xgsc_freq" />
+				<mx:AdvancedDataGridColumn headerText="频时数" dataField="xgsc_hours" />
+			</mx:AdvancedDataGridColumnGroup>
+			
+		</mx:groupedColumns>
+	</mx:AdvancedDataGrid>
+</s:Application>

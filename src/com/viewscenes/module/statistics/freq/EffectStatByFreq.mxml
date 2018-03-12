@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" 
+		  xmlns:system="com.morcha4.frame.system.*"
+		  width="100%" height="100%" 
+		  xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+		  xmlns:ykz="com.viewscenes.module.statistics.ykz.*"
+		  creationComplete="init();">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+		<!-- 频率为基础的效果统计 -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.viewscenes.global.DataManager;
+			import com.morcha4.frame.system.AdvancedEvent;
+			import com.morcha4.frame.system.EventBus;
+			import mx.collections.ArrayCollection;
+			import com.viewscenes.global.comp.MM;
+			import mx.controls.Alert;
+			//资料来源
+			[Bindable]
+			private var datasourceArr:ArrayCollection = new ArrayCollection([{label:"站点收测",data:"1"},{label:"资料录入",data:"2"}]);
+			//运行图类型
+			[Bindable]
+			private var runplanTypeArr:ArrayCollection = new ArrayCollection([{label:"国际台运行图",data:"1"},{label:"海外落地运行图",data:"2"}]);
+			//语言
+			[Bindable]
+			private var lanaguageArr:ArrayCollection = new ArrayCollection();
+//			//收测地区
+//			[Bindable]
+//			private var countryArr:ArrayCollection = new ArrayCollection();
+			//发射台
+			[Bindable]
+			private var stationArr:ArrayCollection = new ArrayCollection();
+			//转播机构
+			[Bindable]
+			private var reBaordCastArr:ArrayCollection = new ArrayCollection();
+			//grid
+			[Bindable]
+			private var gjtDataArr:ArrayCollection = new ArrayCollection();
+			//grid
+			[Bindable]
+			private var hwldDataArr:ArrayCollection = new ArrayCollection();
+			
+			//统计方式
+			[Bindable]
+			private var statsTypeArr:ArrayCollection = new ArrayCollection([{label:"播音时段",data:"playTime"},{label:"半小时",data:"half"},{label:"整时段",data:"hour"}]);
+			
+			
+			private function init():void{
+				EventBus.addEventListener("showVG",show);
+				queryStation();
+//				queryCountry();
+				getLanguageList();
+				queryRedisseminators();
+			}
+			
+			private function show(e:AdvancedEvent):void{
+				this.vg1.visible=true;
+				this.vg1.includeInLayout=true;
+			}
+			
+			/*
+			 * 查询发射台信息
+			 * */
+			private function queryStation():void{
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getStationList",null,getStationListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getStationListBack(arr:ArrayCollection):void{
+				stationArr.removeAll();
+				stationArr = arr;
+				stationArr.addItemAt({name:"全部",station_id:""},0);
+				station.selectedIndex = 0;
+			}
+			
+			/*
+			* 查询转播机构
+			* */
+			private function queryRedisseminators():void{
+				var obj:Object = new Object;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","queryRedisseminators",obj,queryRedisseminatorsBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function queryRedisseminatorsBack(arr:ArrayCollection):void{
+				reBaordCastArr.removeAll();
+				reBaordCastArr = arr;
+				reBaordCastArr.addItemAt("全部",0);
+				orgName.selectedIndex = 0;
+			}
+			
+			
+//			/**
+//			 * 查询收测国家
+//			 * */
+//			private function queryCountry():void{
+//				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getCountryList",null,getCountryListBack,DataManager.showErrorMessageBack));
+//			}
+//			
+//			private function getCountryListBack(arr:ArrayCollection):void{
+//				countryArr.removeAll();
+//				countryArr=arr;
+//				countryArr.addItemAt("全部",0);
+//				country.selectedIndex=0;
+//			}
+			
+			/**
+			 * 
+			 * 节目
+			 * */
+			private function getLanguageList():void{
+				var obj:Object = new Object;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getLanguageList",obj,getLanguageListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getLanguageListBack(arr:ArrayCollection):void{
+				lanaguageArr.removeAll();
+				lanaguageArr = arr;
+				lanaguageArr.addItemAt({language_name:"全部",language_id:null},0);
+				language.selectedIndex = 0;
+			}
+			
+			
+			
+			private function runplanChange(e:Event):void{
+				if (runplanType.selectedIndex == 0){
+					gjtCanvas.visible = true;
+					gjtCanvas.includeInLayout = true;
+					hwldCanvas.visible = false;
+					hwldCanvas.includeInLayout = false;
+					stationHG.visible = true;
+					stationHG.includeInLayout = true;
+					orgHG.visible = false;
+					orgHG.includeInLayout = false;	
+				}else{
+					gjtCanvas.visible = false;
+					gjtCanvas.includeInLayout = false;
+					hwldCanvas.visible = true;
+					hwldCanvas.includeInLayout = true;
+					orgHG.visible = true;
+					orgHG.includeInLayout = true;
+					stationHG.visible = false;
+					stationHG.includeInLayout = false;	
+				}
+				
+			}
+			
+			protected function statEffectByFreq(event:MouseEvent):void
+			{
+				gjtDataArr.removeAll();
+				hwldDataArr.removeAll();
+				var starttime:String= startdatetime.text;
+				var endtime:String= enddatetime.text;
+				if(starttime>endtime){
+					MM.show("开始时间不能晚于结束时间!!");
+					return;
+				}
+				var paramObj:Object = new Object;
+				paramObj.datasource = datasource.selectedItem.data;
+				paramObj.runplanType = runplanType.selectedItem.data;
+				paramObj.freq = freq.text;
+				paramObj.receiveArea = receiveArea.selectedItem.chinese_name;
+				paramObj.language_id = language.selectedItem.language_id;
+				if (runplanType.selectedItem.data == "1"){
+					paramObj.station_id = station.selectedItem.station_id;
+				}else{
+					if(orgName.selectedItem!="全部"){
+						paramObj.station_name = orgName.selectedItem;
+					}
+				}
+				paramObj.receive_time_start = startdatetime.text;
+				paramObj.receive_time_end = enddatetime.text;
+				paramObj.statType = statsType.selectedItem.data;
+				
+				
+				showTips(paramObj.runplanType == 1?gjtGrid:hwldGrid,true,"正在统计,请稍候...");
+				submit.enabled = false;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.statistics.freq.EffectStatByFreq","statEffectByFreq",paramObj,statEffectByFreqBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function statEffectByFreqBack(obj:Object):void{
+				submit.enabled = true;
+				freqPic.xml=obj.xml;
+				if (obj.result.length == 0)
+					showTips(runplanType.selectedItem.data == 1?gjtGrid:hwldGrid,true,"无统计结果...");
+				else
+					showTips(runplanType.selectedItem.data == 1?gjtGrid:hwldGrid,false,"");
+				if (runplanType.selectedIndex == 0){
+					gjtDataArr = obj.result;
+				}else{
+					hwldDataArr=obj.result;
+				}
+			}
+			
+			/**
+			 * 查询时提示信息
+			 */ 
+			private function showTips(grid:AdvancedDataGrid,b:Boolean,msg:String=""):void{
+				var tmp_label:Label = clew_label;
+				if (grid.id == "hwldGrid")
+					tmp_label = clew_label2;
+				if (b == true){
+					tmp_label.y = grid.y+80;
+					tmp_label.visible = true;
+					tmp_label.includeInLayout = true;
+					tmp_label.text = msg;//"正在查询,请稍候...";
+				}else{
+					tmp_label.visible = false
+					tmp_label.includeInLayout = false;
+					tmp_label.text = "";
+				}
+			}
+			
+			protected function btn1_clickHandler():void
+			{
+				// TODO Auto-generated method stub
+				vg1.visible=false;
+				vg1.includeInLayout=false;
+				freqPic.visible=true;
+				freqPic.includeInLayout=true;
+				freqPic.setInfo();
+			}
+		]]>
+	</fx:Script>
+	<s:VGroup id="vg1" width="100%" height="100%">
+		
+		<s:HGroup width="100%"  horizontalAlign="left"  paddingTop="5" verticalAlign="middle">
+			<!--s:Button buttonMode="true" label="从运行图提取"/-->
+			<s:Label text="资料来源"/><s:DropDownList id="datasource" requireSelection="true" selectedIndex="0" width="100"  dataProvider="{datasourceArr}"/>
+			<s:Label text="运行图类型"/><s:DropDownList id="runplanType" change="runplanChange(event)" selectedIndex="0" width="130" dataProvider="{runplanTypeArr}"/>
+			<s:Label text="收测地区"/><s:ComboBox id="receiveArea"  width="100" dataProvider="{DataManager.serviceAreaBeanAll}" requireSelection="true" labelField="chinese_name"/>
+			<s:Label text="语言"/><s:ComboBox id="language" width="80" dataProvider="{lanaguageArr}" labelField="language_name"/>
+			<s:HGroup id="stationHG" verticalAlign="middle">
+				<s:Label text="发射台"/><s:ComboBox id="station"  width="100" dataProvider="{stationArr}" labelField="name"/>
+			</s:HGroup>
+			<s:HGroup id="orgHG" verticalAlign="middle" visible="false" includeInLayout="false">
+				<s:Label text="转播机构"/><s:ComboBox id="orgName" selectedIndex="0" requireSelection="true"  width="100" dataProvider="{reBaordCastArr}" labelField="name"/>
+			</s:HGroup>
+		</s:HGroup>
+		<s:HGroup width="100%"  horizontalAlign="left"  paddingTop="5" verticalAlign="middle">
+			<s:Label text="频率"/><s:TextInput width="80" id="freq" restrict="0-9"/>
+			<s:Label text="收测时间  从"/><timecomp:TimeNew id="startdatetime" dateDisplay="date"/>
+			<s:Label text="到"/><timecomp:TimeNew id="enddatetime" dateDisplay="date"/>
+			<s:Label text="统计方式"/><s:DropDownList id="statsType" requireSelection="true" selectedIndex="0" width="100"  dataProvider="{statsTypeArr}"/>
+			<s:Button buttonMode="true" id="submit" label="统计" click="statEffectByFreq(event)"/>
+			<s:Button id="btn1" label="图形统计" click="btn1_clickHandler()"/>
+		</s:HGroup>
+		
+		
+		
+		<s:VGroup width="100%" height="100%" verticalAlign="top">
+			<mx:Canvas width="100%" height="100%" id="gjtCanvas">
+				<mx:AdvancedDataGrid width="100%" height="100%" id="gjtGrid" textAlign="center" dataProvider="{gjtDataArr}"  showDataTips="true" sortExpertMode="true" headerSortSeparatorSkin="mx.skins.ProgrammaticSkin" >
+					<mx:groupedColumns>
+						<mx:AdvancedDataGridColumnGroup id="leftTitle" textAlign="left">
+							<mx:AdvancedDataGridColumnGroup headerText="频率（kHz）" width="80" dataField="freq"/>
+							<mx:AdvancedDataGridColumnGroup headerText="语言" dataField="language_name" />
+							<mx:AdvancedDataGridColumnGroup headerText="发射台" dataField="station_name" />
+							<mx:AdvancedDataGridColumnGroup headerText="收测地区"  dataField="receivearea" />
+							<mx:AdvancedDataGridColumnGroup headerText="收测时间"  dataField="receivedate" />
+							
+							
+							<mx:AdvancedDataGridColumnGroup headerText="可听度满意程度">
+								<mx:AdvancedDataGridColumn headerText="1" dataField="audibility1"  width="50" />
+								<mx:AdvancedDataGridColumn headerText="2" dataField="audibility2" width="50" />
+								<mx:AdvancedDataGridColumn headerText="3" dataField="audibility3" width="50" />
+								<mx:AdvancedDataGridColumn headerText="4" dataField="audibility4" width="50" />
+								<mx:AdvancedDataGridColumn headerText="5" dataField="audibility5" width="50" />
+							</mx:AdvancedDataGridColumnGroup>
+							<mx:AdvancedDataGridColumnGroup headerText="收测次数"  dataField="receivecount"/>
+							<mx:AdvancedDataGridColumnGroup headerText="可听度中值"  dataField="audibilityMiddleValue"/>
+							
+							<mx:AdvancedDataGridColumnGroup headerText="电平中值"  dataField="level_value"/>
+							<mx:AdvancedDataGridColumnGroup headerText="可听率%"  dataField="audible"/>
+							<mx:AdvancedDataGridColumnGroup headerText="备注"  dataField="disturb"/>
+							
+						</mx:AdvancedDataGridColumnGroup>
+					</mx:groupedColumns>
+				</mx:AdvancedDataGrid>
+				<s:Label text="正在查询，请稍候..." color="0x000000" id="clew_label" y="{gjtGrid.headerHeight+10}" width="100%" textAlign="center"  visible="false" includeInLayout="false" />
+			</mx:Canvas>
+			
+			<mx:Canvas width="100%" height="100%" visible="false" includeInLayout="false" id="hwldCanvas">
+				<mx:AdvancedDataGrid width="100%" height="100%" id="hwldGrid" textAlign="center"  dataProvider="{hwldDataArr}"  showDataTips="true"  headerSortSeparatorSkin="mx.skins.ProgrammaticSkin">
+					<mx:groupedColumns>
+						<mx:AdvancedDataGridColumnGroup  textAlign="left">
+							<mx:AdvancedDataGridColumnGroup headerText="频率（kHz）" width="80" dataField="freq" />
+							<mx:AdvancedDataGridColumnGroup headerText="语言" dataField="language_name" />
+							<mx:AdvancedDataGridColumnGroup headerText="转播机构" dataField="rebroadcastorg" />
+							<mx:AdvancedDataGridColumnGroup headerText="收测地区"  dataField="receivearea" />
+							<mx:AdvancedDataGridColumnGroup headerText="收测时间"  dataField="receivedate" />
+							<mx:AdvancedDataGridColumnGroup headerText="可听度满意程度" >
+								<mx:AdvancedDataGridColumn headerText="1" dataField="audibility1"  width="50" />
+								<mx:AdvancedDataGridColumn headerText="2" dataField="audibility2" width="50" />
+								<mx:AdvancedDataGridColumn headerText="3" dataField="audibility3" width="50" />
+								<mx:AdvancedDataGridColumn headerText="4" dataField="audibility4" width="50" />
+								<mx:AdvancedDataGridColumn headerText="5" dataField="audibility5" width="50" />
+							</mx:AdvancedDataGridColumnGroup>
+							<mx:AdvancedDataGridColumnGroup headerText="收测次数"  dataField="receivecount"/>
+							<mx:AdvancedDataGridColumnGroup headerText="可听度中值"  dataField="audibilityMiddleValue"/>
+							
+							<mx:AdvancedDataGridColumnGroup headerText="电平中值"  dataField="level_value"/>
+							<mx:AdvancedDataGridColumnGroup headerText="可听率%"  dataField="audible"/>
+							<mx:AdvancedDataGridColumnGroup headerText="备注"  dataField="disturb"/>
+							
+						</mx:AdvancedDataGridColumnGroup>
+					</mx:groupedColumns>
+				</mx:AdvancedDataGrid>
+				<s:Label text="正在查询，请稍候..." color="0x000000" id="clew_label2" y="{60}" width="100%" textAlign="center"  visible="false" includeInLayout="false" />
+			</mx:Canvas>
+		</s:VGroup>
+	</s:VGroup>
+	<ykz:AudiblePic width="100%" height="100%" id="freqPic" visible="false" includeInLayout="false"/>
+</system:BasePage>

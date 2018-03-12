@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 xmlns:system="com.morcha4.frame.system.*"
+				 xmlns:flipBar="com.viewscenes.utils.flipBar.*"
+				 xmlns:tools="com.viewscenes.utils.tools.*"
+				 width="100%" height="100%">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.util.RendererUtil;
+			import com.viewscenes.beans.user.OnlineUserBean;
+			import com.viewscenes.beans.user.PubUserBean;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+			import com.viewscenes.utils.ExportExcel;
+			import com.viewscenes.utils.player.playBar.FullButton;
+			
+			/**
+			 * 用户集合
+			 */
+			[Bindable]
+			private var userCollection:ArrayCollection=new ArrayCollection();
+			/**
+			 * 查询在线用户
+			 */
+			private function getOnlineUsers():void{
+				userCollection.removeAll();
+				clew_label.visible=true;
+				clew_label.includeInLayout=true;
+				var obj:Object=new Object();
+				obj.userCode=userCode.text;
+				obj.userName=userName.text;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.sysmgr.user.OnlineUserManager","getOnlineUsers",obj,_getOnlineUsers,DataManager.showErrorMessageBack));
+			}
+			private function _getOnlineUsers(arr:ArrayCollection):void{
+				
+				if (arr.length > 0 && arr[0].hasOwnProperty("message")){
+					MM.show(arr[0].message);
+				}else if(arr.length==0){					
+					obj = new Object();
+					obj.resultList = new ArrayCollection();
+					obj.resultTotal = 0;
+					pagebar.m_queryProcess(obj,showBackDetailMethod);
+					return;
+				}else{
+					var obj:Object=new Object();
+					obj.resultList=arr;
+					obj.resultTotal=obj.resultList.length
+					pagebar.m_queryProcess(obj,showBackDetailMethod);
+				}
+			}
+			private function showBackDetailMethod(obj:ArrayCollection):void{				
+				clew_label.visible=false;
+				clew_label.includeInLayout=false;
+				userCollection.removeAll();
+				if(obj.length==0){
+					clew_label.text="无查询数据！";
+					clew_label.visible=true;
+					clew_label.includeInLayout=true;					
+				}else{					
+					userCollection=obj ;
+				}								
+			}
+			
+			/**
+			 * 强制用户下线 不能强制自己下线
+			 */
+			private function referralsUser(obj:Object):void{
+				var	bean:OnlineUserBean=obj.data as OnlineUserBean;	
+				if(bean.userName==DataManager.user.userName){
+					MM.show("不能强制自己下线");
+				}
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.sysmgr.user.OnlineUserManager","removeUser",bean,_referralsUser,DataManager.showErrorMessageBack));
+			}
+			private function _referralsUser(obj:Object):void{
+				getOnlineUsers();
+			}
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%">
+	
+		<s:HGroup width="100%" height="25" horizontalAlign="left" verticalAlign="middle" >
+			<s:HGroup width="50%" height="100%" horizontalAlign="left" verticalAlign="middle">
+				<s:Label text="用户代码"/>
+				<s:TextInput id="userCode" />
+				
+				<s:Label text="用户名"/>
+				<s:TextInput id="userName" />
+				
+			</s:HGroup>
+			<s:HGroup width="50%" height="100%" horizontalAlign="right" verticalAlign="middle">
+				<s:Button buttonMode="true" label="查询" click="getOnlineUsers()"/>
+			</s:HGroup>	
+		</s:HGroup>
+		<mx:Canvas width="100%" height="100%" >
+			<s:DataGrid textAlign="center" id="uDg" width="100%" height="100%" dataProvider="{userCollection}">
+				<s:columns>
+					<s:ArrayCollection>
+						<s:GridColumn  minWidth="100" headerText="用户代码" dataField="userCode"/>
+						<s:GridColumn  minWidth="100" headerText="用户名" dataField="userName"/>
+						<s:GridColumn  minWidth="100" headerText="职位" dataField="post"/>
+						<s:GridColumn  minWidth="70" headerText="年纪" dataField="age"/>
+						<s:GridColumn  minWidth="100" headerText="移动电话" dataField="mobilephone"/>
+						<s:GridColumn  minWidth="100" headerText="办公电话" dataField="telephone"/>
+						<s:GridColumn  minWidth="100" headerText="地址" dataField="address"/>
+						<s:GridColumn  minWidth="100" headerText="E-MAIL" dataField="email"/>
+						<s:GridColumn  minWidth="100" headerText="登录IP" dataField="ip"/>
+						<!--<s:GridColumn  minWidth="100" headerText="描述信息" dataField="description"/>
+						<s:GridColumn  minWidth="100" headerText="有效开始时间" dataField="start_time"/>
+						<s:GridColumn  minWidth="100" headerText="有效结束时间" dataField="end_time"/>-->
+						<s:GridColumn  minWidth="100" headerText="强制下线" dataField="userId" itemRenderer="{RendererUtil.getButtonRenderer('强制下线',referralsUser)}"/>
+					</s:ArrayCollection>
+				</s:columns>
+			</s:DataGrid>
+			<s:Label text="正在查询，请稍候..." id="clew_label" y="{uDg.columnHeaderGroup.height+10}" color="0x000000" fontSize="15" width="100%" textAlign="center"  visible="false" includeInLayout="false" />
+			
+		</mx:Canvas>
+		<flipBar:PageBar  id="pagebar" rowConutOfPage="40" totalPageQuery="10" height="20"/>
+	</s:VGroup>
+</system:BasePage>

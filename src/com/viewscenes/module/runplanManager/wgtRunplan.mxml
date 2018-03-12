@@ -1,0 +1,585 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 xmlns:system="com.morcha4.frame.system.*" 
+				 xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+				 xmlns:flipBar="com.viewscenes.utils.flipBar.*"
+				 xmlns:tools="com.viewscenes.utils.tools.*"
+				 width="100%" height="100%" creationComplete="init()" xmlns:checkbox="com.viewscenes.global.comp.checkbox.*">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCException;
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.util.RendererUtil;
+			import com.viewscenes.beans.runplan.WGTRunplanBean;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+			import com.viewscenes.utils.StringTool;
+			
+			import mx.controls.Alert;
+			
+			import spark.events.GridEvent;
+			import spark.events.ListEvent;
+			[Bindable]
+			private var wgtRunplanArr:ArrayCollection = new ArrayCollection();
+			//发射台
+			[Bindable]
+			private var stationArr:ArrayCollection = new ArrayCollection();
+			
+			//国家
+			[Bindable]
+			private var countryArr:ArrayCollection = new ArrayCollection();
+			//发射城市 
+			[Bindable]
+			private var cityArr:ArrayCollection = new ArrayCollection();
+			//语言
+			[Bindable]
+			private var lanaguageArr:ArrayCollection = new ArrayCollection();
+			//遥控站点
+			[Bindable]
+			private var headArr:ArrayCollection = new ArrayCollection();
+			//季节代号
+			[Bindable]
+			private var seasonArr:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			public var selectedCounts:int =0;
+			private var runplan_id:String="";
+			private function init():void{
+				this.valid_starttime.text=this.valid_starttime.text.split(' ')[0]+" 00:00:00";
+				queryCountry();
+				queryStation();
+				getLanguageList();
+				queryCity();
+				queryHeadend();
+			}
+			/**
+			 * 遥控站收测站点
+			 * */
+			private function queryHeadend():void{
+				var obj:Object = new Object();
+				obj.type_id="all";
+				obj.state="all";
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.runplanManager.gjtRunplan.GJTRunplan","getHeadendList",obj,getHeadendListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getHeadendListBack(arr:ArrayCollection):void{
+				
+				headArr=arr;
+			}
+			
+			/**
+			 * 查询发射台信息
+			 * */
+			private function queryStation():void{
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getStationList",null,getStationListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getStationListBack(arr:ArrayCollection):void{
+				stationArr.removeAll();
+				stationArr = arr;
+				stationArr.addItemAt({name:"",station_id:""},0);
+				station.selectedIndex=0;
+				//broadcast_station.dataProvider = StringTool.clone(arr);
+				//broadcast_station.selectedIndex=0;
+			}
+			
+			/**
+			 * 查询国家
+			 * */
+			private function queryCountry():void{
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getCountryList",null,getCountryListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getCountryListBack(arr:ArrayCollection):void{
+				countryArr.removeAll();
+				countryArr=arr;
+				countryArr.addItemAt("",0);
+				broadcast_country.selectedIndex=0;
+				launch_country.dataProvider = StringTool.clone(arr);
+				launch_country.selectedIndex=0;
+			}
+			
+			/**
+			 * 查询发射城市信息
+			 * */
+			private function queryCity():void{
+				var obj:Object = new Object();
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getCityList",obj,getCityListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getCityListBack(arr:ArrayCollection):void{
+				cityArr.removeAll();
+				cityArr = arr;
+				cityArr.addItemAt({city:"",id:""},0);
+				sendcity.selectedIndex=0;
+			}
+			
+			/**
+			 * 
+			 * 语言
+			 * */
+			private function getLanguageList():void{
+				var obj:Object = new Object;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getLanguageList",obj,getLanguageListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getLanguageListBack(arr:ArrayCollection):void{
+				lanaguageArr.removeAll();
+				lanaguageArr = arr;
+				lanaguageArr.addItemAt({language_name:"",language_id:""},0);
+				language.selectedIndex=0;
+			}
+			
+			
+			/**
+			 * 新增运行图
+			 * */
+			private function addRunplan():void{
+				var wgtBean:WGTRunplanBean = new WGTRunplanBean();
+				wgtBean.input_person = DataManager.user.userName;
+//				if(broadcast_country.selectedIndex<0||broadcast_country.selectedItem==""){
+//					DataManager.showErrorMessage("请选择播音国家!");
+//					return ;
+//				}else 
+					wgtBean.broadcast_country = broadcast_country.selectedIndex<0?" ":broadcast_country.selectedItem;
+//				if(broadcast_station.text==""){
+//					DataManager.showErrorMessage("请添加播音电台!");
+//					return ;
+//				}
+//				else 
+					wgtBean.broadcast_station = broadcast_station.text;
+//				if(launch_country.selectedIndex<0||launch_country.selectedItem==""){
+//					DataManager.showErrorMessage("请选择发射国家!");
+//					return ;
+//				}else 
+					wgtBean.launch_country = launch_country.selectedIndex<0?" ":launch_country.selectedItem;
+//				if(sendcity.selectedIndex<0||sendcity.selectedItem.city==""){
+//					DataManager.showErrorMessage("请选择发射城市!");
+//					return ;
+//				}else{
+					wgtBean.sentcity_id =sendcity.selectedIndex<0?" ": sendcity.selectedItem.id;
+					wgtBean.sentcity = sendcity.selectedIndex<0?" ":sendcity.selectedItem.city;
+				//}
+//				if(this.station.selectedIndex<0||this.station.selectedItem.name==""){
+//					DataManager.showErrorMessage("请选择发射台!");
+//					return ;
+//				}else{
+					wgtBean.station_id = this.station.selectedIndex<0?" ":this.station.selectedItem.station_id;
+					wgtBean.station_name = this.station.selectedIndex<0?" ":this.station.selectedItem.name;
+				//}
+				
+//				if(transmiter_no.text==""){
+//					DataManager.showErrorMessage("发射机号不能为空!");
+//					return ;
+//				}
+//				else
+					wgtBean.transmiter_no = transmiter_no.text;
+//				if(freq.text==""){
+//					DataManager.showErrorMessage("频率不能为空!");
+//					return ;
+//				}
+//				else 
+					wgtBean.freq = freq.text;
+//				if(direction.text==""){
+//					DataManager.showErrorMessage("方向不能为空!");
+//					return ;
+//				}else 
+					wgtBean.direction = direction.text;
+				//wgtBean.antenna = antenna.text;
+			//	wgtBean.antennatype = antennatype.text;
+//				if(language.selectedIndex<0||language.selectedItem.language_name==""){
+//					DataManager.showErrorMessage("请选择语言!");
+//					return ;
+//				}else 
+					wgtBean.language_id = language.selectedIndex<0?" ":language.selectedItem.language_id;
+				wgtBean.start_time = starttime.text;
+				wgtBean.end_time = endtime.text;
+			//	if(season.selectedItem!=null){
+		//			wgtBean.season_id = season.selectedIndex<0?season.selectedItem:season.selectedItem.code;
+			//	}
+				
+				wgtBean.power = power.text;
+				wgtBean.service_area = service_area.text;
+				wgtBean.ciraf = ciraf.text;
+				wgtBean.remark = remark.text;
+				wgtBean.mon_area = mon_area.getText("value");
+				wgtBean.rest_datetime = rest_datetime.text;
+				wgtBean.valid_start_time = valid_starttime.text;
+				wgtBean.valid_end_time = valid_endtime.text;
+				wgtBean.runplan_type_id='3';
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.runplanManager.wgtRunplan.WGTRunplan","addRunplan",wgtBean,addRunplanBack,DataManager.showErrorMessageBack));	
+			}
+			
+			private function addRunplanBack(res:String):void{
+				DataManager.showErrorMessage(res);
+				queryRunplan();
+			}
+			/**
+			 * 运行图查询
+			 * */
+			private function queryRunplan():void{
+				wgtRunplanArr.removeAll();
+				clew_label.visible=true;
+				clew_label.includeInLayout=true;
+				var wgtRunplan:WGTRunplanBean = new WGTRunplanBean();
+				wgtRunplan.runplan_type_id="3";//外国台运行图
+				var request:RORequestParam = new RORequestParam("com.viewscenes.web.runplanManager.wgtRunplan.WGTRunplan","queryRunplan",wgtRunplan,getRunplanListBack,DataManager.showErrorMessageBack);
+				pagebar.m_sendCmd(request);
+			}
+			private function getRunplanListBack(arr:ArrayCollection):void{
+				if(arr.length==0){
+					clew_label.text="无相关查询数据";
+				}else{
+					clew_label.visible=false;
+					clew_label.includeInLayout=false;
+					wgtRunplanArr = arr;
+				}
+				
+			}
+			//选择点中后执行的方法
+			private function changeSelect(obj:Object):void{
+				if(obj.data.isSelected=="true"){
+					this.selectedCounts=selectedCounts+1;  
+				}else{
+					this.selectedCounts=selectedCounts-1; 
+				}
+			}
+			
+			/**
+			 * 全选操作
+			 * */
+			private var selectState:Boolean = false;// 记录选中的状态
+			
+			private function selectAll():void{
+				if(btn1.label=="全选"){
+					btn1.label="取消全选";
+					selectState=true;
+				}else{
+					btn1.label="全选";
+					selectState=false;
+				}
+				for(var i:int=0;i<wgtRunplanArr.length;i++){
+					var obj:Object = wgtRunplanArr.getItemAt(i) as Object;
+					obj.isSelected=selectState;
+				}
+				wgtRunplanArr.refresh();
+				
+			}
+			/**
+			 * 点击datagrid某行数据触发的方法
+			 * */
+			private function onGridClick(event:GridEvent){
+				//Alert.show(event.columnIndex+"");
+				if(grid.dataProvider.length<=0){
+					return;
+				}else{
+					if(event.columnIndex==0){
+						return;
+					}else{
+						runplan_id = grid.selectedItem.runplan_id;
+						for(var k:int=0;k<countryArr.length;k++){
+							if(countryArr[k]==grid.selectedItem.broadcast_country){
+								broadcast_country.selectedIndex=k;
+							}
+						}
+//						for(var m:int=0;m<broadcast_station.dataProvider.length;m++){
+//							if(broadcast_station.dataProvider[m].name==grid.selectedItem.station_name){
+//								broadcast_station.selectedIndex=m;
+//							}
+//						}
+						broadcast_station.text=grid.selectedItem.broadcast_station;
+						for(var j:int=0;j<launch_country.dataProvider.length;j++){
+							if(launch_country.dataProvider[j]==grid.selectedItem.launch_country){
+								launch_country.selectedIndex=j;
+							}
+						}
+						for(var i:int=0;i<stationArr.length;i++){
+							
+							if(stationArr[i].name==grid.selectedItem.station_name){
+								station.selectedIndex=i;
+							}
+						}
+						for(var n:int=0;n<cityArr.length;n++){
+							if(cityArr[n].id==grid.selectedItem.sentcity_id){
+								sendcity.selectedIndex=n;
+							}
+						}
+						transmiter_no.text = grid.selectedItem.transmiter_no;
+						freq.text = grid.selectedItem.freq;
+					//	antenna.text = grid.selectedItem.antenna;
+					//	antennatype.text = grid.selectedItem.antennatype;
+						starttime.text = grid.selectedItem.start_time;
+						endtime.text = grid.selectedItem.end_time;
+						for(var j:int=0;j<lanaguageArr.length;j++){
+							if(lanaguageArr[j].language_id==grid.selectedItem.language_id){
+								language.selectedIndex=j;
+							}
+						}
+//						for(var k:int=0;k<seasonArr.length;k++){
+//							if(seasonArr[k].code==grid.selectedItem.season_id){
+//								season.selectedIndex=k;
+//							}
+//						}
+						direction.text = grid.selectedItem.direction;
+						power.text = grid.selectedItem.power;
+						service_area.text = grid.selectedItem.service_area;
+						ciraf.text = grid.selectedItem.ciraf;
+						remark.text = grid.selectedItem.remark;
+					    mon_area.setText( grid.selectedItem.mon_area,"value");
+						rest_datetime.text = grid.selectedItem.rest_datetime;
+						rest_time.text = grid.selectedItem.rest_time;
+						valid_starttime.text = grid.selectedItem.valid_start_time;
+						valid_endtime.text = grid.selectedItem.valid_end_time;
+					}
+					
+				}
+				
+			}
+			/**
+			 * 修改运行图
+			 * */
+			private function updateRunplan():void{
+				var msg:String="";
+				var wgtbean:WGTRunplanBean = new WGTRunplanBean();
+//				if(runplan_id==""){
+//					DataManager.showErrorMessage("请选择需要修改的运行图!");
+//					return;
+//				}
+//				if(broadcast_country.selectedIndex<0||broadcast_country.selectedItem==""){
+//					msg+="请选择播音国家!\r";
+//				}
+//				if(broadcast_station.text==""){
+//					msg+="请添加播音电台!\r";
+//				}
+//				if(launch_country.selectedIndex<0||launch_country.selectedItem==""){
+//					msg+="请选择发射国家!\r";
+//				}
+//				if(sendcity.selectedIndex<0||sendcity.selectedItem.city==""){
+//					msg+="请选择发射城市!\r";
+//				}
+//				if(station.selectedIndex<0||station.selectedItem.name==""){
+//					msg+="请选择发射台";
+//				}
+//				if(language.selectedIndex<0||language.selectedItem.language_name==""){
+//					msg+="请选择语言!\r";
+//				}
+//				if(transmiter_no.text==""){
+//					msg+="机号不能为空!\r";
+//				}
+//				if(direction.text==''){
+//					msg+="方向不能为空!\r";
+//				}
+//				if(starttime.text==""){
+//					msg+="开始时间不能为空!\r";
+//				}
+//				if(endtime.text==""){
+//					msg+="结束时间不能为空!\r";
+//				}
+//				if(freq.text==""){
+//					msg+="频率不能为空!\r";
+//				}
+//				if(valid_starttime.text==""){
+//					msg+="有效期开始时间不能为空!\r";
+//				}
+//				if(valid_endtime.text==""){
+//					msg+="有效期结束时间不能为空!\r";
+//				}
+//				if(msg!=""){
+//					DataManager.showErrorMessage(msg);
+//					return;
+//				}
+				wgtbean.runplan_id = runplan_id;
+				wgtbean.broadcast_country = broadcast_country.selectedIndex<0?"":broadcast_country.selectedItem;
+				wgtbean.broadcast_station = broadcast_station.text;
+				wgtbean.launch_country = launch_country.selectedIndex<0?"":launch_country.selectedItem;
+				wgtbean.station_id = station.selectedIndex<0?"":station.selectedItem.station_id;
+				wgtbean.station_name = station.selectedIndex<0?"":station.selectedItem.name;
+				wgtbean.sentcity_id = sendcity.selectedIndex<0?"":sendcity.selectedItem.id;
+			//	wgtbean.season_id = season.selectedIndex<0?season.selectedItem:season.selectedItem.code;
+				wgtbean.transmiter_no = transmiter_no.text;
+				wgtbean.freq = freq.text;
+			//	wgtbean.antenna = antenna.text;
+			//	wgtbean.antennatype = antennatype.text;
+				wgtbean.start_time = starttime.text;
+				wgtbean.end_time = endtime.text;
+				wgtbean.language_id = language.selectedIndex<0?"":language.selectedItem.language_id;
+				wgtbean.direction = direction.text;
+				wgtbean.power = power.text;
+				wgtbean.service_area = service_area.text;
+				wgtbean.ciraf = ciraf.text;
+				wgtbean.remark = remark.text;
+				wgtbean.mon_area=mon_area.getText("value");
+				wgtbean.rest_datetime = rest_datetime.text;
+				wgtbean.rest_time = rest_time.text;
+				wgtbean.valid_start_time = valid_starttime.text;
+				wgtbean.valid_end_time = valid_endtime.text;
+				wgtbean.input_person = DataManager.user.userName;
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.runplanManager.wgtRunplan.WGTRunplan","updateRunplan",wgtbean,updateRunplanBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function updateRunplanBack(res:String):void{
+				DataManager.showErrorMessage(res);
+			}
+			/**
+			 * 重置查询条件
+			 * */
+			private function reset():void{
+				broadcast_country.selectedIndex=0;
+				broadcast_station.text="";
+				launch_country.selectedIndex=0;
+				station.selectedIndex=0;
+				sendcity.selectedIndex=0;
+				language.selectedIndex=0;
+				transmiter_no.text="";
+				freq.text="";
+				direction.text="";
+			//	antenna.text="";
+			//	antennatype.text="";
+				starttime.text="00:00";
+				endtime.text="00:00";
+				power.text="";
+				service_area.text="";
+				ciraf.text="";
+				remark.text="";
+				//season.selectedIndex=0;
+				mon_area.setText("","value");
+			}
+			/**
+			 * 删除运行图
+			 * */
+			public var runplanIDs:String="";
+			private function delRunplan():void{
+				runplanIDs="";
+				for(var i:int=0;i<wgtRunplanArr.length;i++){
+					var obj:Object = new Object();
+					obj = wgtRunplanArr.getItemAt(i) as Object;
+					if(obj.isSelected=="true"){
+						runplanIDs+=obj.runplan_id+",";
+					}
+				}
+				if(runplanIDs!=""){
+					MM.show("您确定要删除吗?","删除运行图",'',confirmDel,true,cancelHandler,null);
+				}else{
+					DataManager.showErrorMessage("请选择要删除的运行图!");
+					return;
+				}
+				
+			}
+			
+			/**
+			 * 取消回调方法
+			 * */
+			private function cancelHandler():void{
+				runplanIDs="";
+			}
+			
+			private function confirmDel():void{
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.runplanManager.wgtRunplan.WGTRunplan","delRunplan",runplanIDs.substr(0,runplanIDs.length-1),delRunplanBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function delRunplanBack(res:String):void{
+				runplanIDs="";
+				DataManager.showErrorMessage(res);
+				queryRunplan();
+			}
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%" paddingTop="10" horizontalAlign="center" verticalAlign="middle">
+		<s:HGroup width="100%" height="25" verticalAlign="middle">
+			<s:Label text="播音国家"/>
+			<s:ComboBox id="broadcast_country" dataProvider="{countryArr}" labelField="country" />
+			<s:Label text="播音电台"/>
+			<!--s:DropDownList id="broadcast_station" labelField="name" /-->
+			<s:TextInput id="broadcast_station"/>
+			<s:Label text="发射国家"/>
+			<s:ComboBox id="launch_country"  labelField="country" />
+			<s:Label text="发射城市"/>
+			<s:ComboBox id="sendcity" width="100" dataProvider="{cityArr}" labelField="city" />
+			<s:Label text="发射台"/>
+			<s:ComboBox id="station" dataProvider="{stationArr}" labelField="name"/>
+			
+		</s:HGroup>
+		<mx:HRule width="100%" strokeWidth="1" strokeColor="#a0a0a0" shadowColor="#000000" />
+		<s:HGroup width="100%" height="25" verticalAlign="middle">
+			<!--s:Label text="季节代号"/>
+			<s:ComboBox id="season" dataProvider="{seasonArr}" labelField="code" width="70"/-->
+			<s:Label text="发射机号"/>
+			<s:TextInput id="transmiter_no"/>
+			<s:Label text="频率(KHz)"/>
+			<s:TextInput id="freq" width="60" restrict="0-9"/>
+			<!--s:Label text="天线号"/>
+			<s:TextInput id="antenna" width="70"/>
+			<s:Label text="天线程式"/>
+			<s:TextInput id="antennatype" width="70"/-->
+			<s:Label text="语言"/>
+			<s:ComboBox id="language" width="80" dataProvider="{lanaguageArr}" labelField="language_name"/>
+			<s:Label text="方向"/>
+			<s:TextInput id="direction" width="60" restrict="0-9"/>
+			<s:Label text="功率"/>
+			<s:TextInput id="power" width="60" restrict="0-9"/>
+			<s:Label text="服务区"/>
+			<s:TextInput id="service_area" width="80"/>
+			<s:Label text="CIRAF区"/>
+			<s:TextInput id="ciraf" width="80"/>
+		</s:HGroup>
+		<mx:HRule width="100%" strokeWidth="1" strokeColor="#a0a0a0" shadowColor="#000000" />
+		<s:HGroup width="100%" height="25" verticalAlign="middle">
+			
+			<s:Label text="开始时间"/>
+			<timecomp:TimeNew id="starttime"  dateDisplay="timenew"/>
+			<s:Label text="结束时间" />
+			<timecomp:TimeNew id="endtime"  dateDisplay="timenew"/>
+			<s:Label text="休息日期"/>
+			<timecomp:TimeNew  id="rest_datetime"/>
+			<s:Label text="休息时间"/>
+			<s:TextInput id="rest_time"/>
+			<s:Label text="启用期"/>
+			<timecomp:TimeNew id="valid_starttime"/>
+			<s:Label text="停用期"/>
+			<timecomp:TimeNew id="valid_endtime"/>
+			
+		</s:HGroup>
+		<s:HGroup width="100%" height="25" verticalAlign="middle">
+			<s:Label text="收测站点"/>
+			<checkbox:CheckDropList id="mon_area" width="150" filedLabel="label" dataProvider="{headArr}"/>
+			<s:Label text="备注"/>
+			<s:TextInput id="remark" width="200"/>
+			<s:Button buttonMode="true" label="增加" click="addRunplan()"/>
+			<s:Button buttonMode="true" label="查询" click="queryRunplan()" />
+			<s:Button buttonMode="true" label="修改" click="updateRunplan()" />
+			<s:Button buttonMode="true" label="全选" click="selectAll()" id="btn1"/>
+			<s:Button buttonMode="true" label="删除" click="delRunplan()"/>
+			<s:Button buttonMode="true" label="重置" click="reset()"/>	
+		</s:HGroup>
+		<mx:Canvas  width="100%" height="100%">
+			<s:DataGrid width="100%" height="100%" id="grid"  gridClick="onGridClick(event)" textAlign="center"  dataProvider="{wgtRunplanArr}">
+				<s:columns>
+					<s:ArrayCollection>  
+						<s:GridColumn headerText="选择" width="60" editable="false" itemRenderer="{RendererUtil.getCheckBoxRenderer(changeSelect)}" />
+						<s:GridColumn dataField="broadcast_country"  headerText="播音国家" />
+						<s:GridColumn dataField="broadcast_station"  headerText="播音电台" />
+						<s:GridColumn dataField="launch_country"  headerText="发射国家" />
+						<s:GridColumn dataField="sentcity"  headerText="发射城市" />
+						<s:GridColumn dataField="freq"  headerText="频率(KHZ)" />
+						<s:GridColumn dataField="language"  headerText="语言" />
+						<s:GridColumn dataField="start_time"  headerText="开始时间" />
+						<s:GridColumn dataField="end_time"  headerText="结束时间" />
+						<s:GridColumn dataField="local_start_time"  headerText="当地开始时间" />
+						<s:GridColumn dataField="local_end_time"  headerText="当地结束时间" />
+						<s:GridColumn dataField="valid_start_time"  headerText="启用期" />
+						<s:GridColumn dataField="valid_end_time"  headerText="停用期" />
+						<s:GridColumn dataField="input_person" headerText="录入人"/>
+					</s:ArrayCollection>
+				</s:columns>
+			</s:DataGrid>
+			<s:Label text="正在查询，请稍候..." id="clew_label" y="{grid.columnHeaderGroup.height+10}" color="0x000000" fontSize="15" width="100%" textAlign="center"  visible="false" includeInLayout="false" />
+		</mx:Canvas>	
+		<flipBar:PageBar width="100%" id="pagebar" rowConutOfPage="40" totalPageQuery="5" height="20"/>
+		
+	</s:VGroup>
+</system:BasePage>

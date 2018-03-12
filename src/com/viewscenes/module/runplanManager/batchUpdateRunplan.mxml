@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" 
+			   title="{_title}" close="myCloseHandler()"
+			   xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+			   xmlns:checkbox="com.viewscenes.global.comp.checkbox.*"
+			   mouseDown="startDrag()" mouseUp="stopDrag();"
+			   x="{(Capabilities.screenResolutionX - width) / 2}" 
+			   y="{(Capabilities.screenResolutionY - height) / 2 - 50}" 
+			   backgroundColor="0x000000" alpha="1" width="700" height="500" creationComplete="init()">
+	<s:layout>
+		<s:FormItemLayout/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCException;
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+			
+			import mx.collections.ArrayCollection;
+			import mx.managers.PopUpManager;
+			[Bindable]
+			var stationArr:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			private var seasonArr:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			public var _title:String="批量修改运行图";
+			[Bindable]
+			private var stateArr:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			private var headArr:ArrayCollection = new ArrayCollection();
+			public var runplanType="";
+			private function init():void{
+				queryHeadend();
+				queryStation();
+				querySeason();
+				starttime.text="";
+				endtime.text="";
+				showItem();
+				
+			}
+			
+			private function showItem():void{
+				if(runplanType=="1"){
+					gj.visible=true;
+					gj.includeInLayout=true;
+					stationItem.visible=true;
+					stationItem.includeInLayout=true;
+					transmitorItem.visible=true;
+					transmitorItem.includeInLayout=true;
+					freqItem.visible=true;
+					freqItem.includeInLayout=true;
+				}else{
+					gj.visible=false;
+					gj.includeInLayout=false;
+					stationItem.visible=false;
+					stationItem.includeInLayout=false;
+					transmitorItem.visible=false;
+					transmitorItem.includeInLayout=false;
+					freqItem.visible=false;
+					freqItem.includeInLayout=false;
+					hw.visible=true;
+					hw.includeInLayout=true;
+				}
+			}
+			
+			/**
+			 * 查询站点信息
+			 * */
+			private function queryHeadend():void{
+				var obj:Object = new Object();
+				obj.type_id="all";
+				obj.state="all"; 
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.runplanManager.gjtRunplan.GJTRunplan","getHeadendList",obj,getHeadendListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getHeadendListBack(arr:ArrayCollection):void{
+				headend.setText(" ","value");
+				headArr=arr;
+			}
+			/**
+			 * 季节代号
+			 * */
+			private function querySeason():void{
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getSeasonList",null,getSeasonListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getSeasonListBack(arr:ArrayCollection):void{
+				seasonArr.removeAll();
+				var obj:Object = new Object();
+				obj.code = "";
+				arr.addItemAt(obj,0);
+				seasonArr = arr;
+				season.selectedIndex = 1;
+			}
+			
+			/**
+			 * 查询发射台信息
+			 * */
+			private function queryStation():void{
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","getStationList",null,getStationListBack,DataManager.showErrorMessageBack));
+			}
+			
+			private function getStationListBack(arr:ArrayCollection):void{
+				stationArr.removeAll();
+				stationArr = arr;
+				stationArr.addItemAt({name:"",station_id:""},0);
+				station.selectedIndex = 0;
+			}
+			/**
+			 * 关闭弹出窗口，同时将选择的运行图信息发出
+			 * */
+			private function myCloseHandler():void{
+				PopUpManager.removePopUp(this);
+			}
+			/**
+			 * 批量修改运行图
+			 * */
+			private function batchUpdate():void{
+				var obj:Object = new Object();
+				obj.user_name = DataManager.user.userName;
+				if(runplanType=="1"){
+					
+					if(station.selectedItem.name==""&&transmitor_no.text==""&&freq.text==""&&starttime.text==""&&endtime.text==""){
+						MM.show("请至少指定一个需要修改的运行图条件!")
+						return;
+					}
+					if(season.selectedItem!=null){
+						obj.season = season.selectedItem.code;
+					}
+					if(station.selectedItem!=null){
+						obj.station_id = station.selectedItem.station_id;
+						obj.station_name = station.selectedItem.name;
+					}
+					obj.transmitor_no = transmitor_no.text;
+					obj.freq = freq.text;
+					obj.starttime = starttime.text;
+					obj.endtime = endtime.text;
+					if(station1.selectedItem!=null){
+						obj.station_id1 = station1.selectedItem.station_id;
+						obj.station_name1 = station1.selectedItem.name;
+					}
+					obj.transmitor_no1 = transmitor_no1.text;
+					obj.freq1 = freq1.text;
+					obj.valid_starttime = valid_starttime.text;
+					obj.valid_endtime = valid_endtime.text;
+					RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.runplanManager.gjtRunplan.GJTRunplan","batchupdateRunplan",obj,updateRunplanBack,DataManager.showErrorMessageBack));
+				}else{
+					if(headend.getText("value")==""||headend.getText("value")==null){
+						MM.show("请至少选择一个站点条件查询运行图!");
+						return;
+					}else{
+						
+						obj.code=headend.getText("value");
+						if(valid_starttime.text==""||valid_endtime.text==""){
+							MM.show("请指定运行图有效期!");
+							return;
+						}else{
+							obj.valid_starttime = valid_starttime.text;
+							obj.valid_endtime = valid_endtime.text;
+						}
+						if(seasonType.selectedItem!=null){
+							obj.seasonType = seasonType.selectedItem.label;
+						}
+					}
+					RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.runplanManager.hwRunplan.HWRunplan","batchupdateRunplan",obj,updateRunplanBack,DataManager.showErrorMessageBack));
+				}
+				
+			}
+			
+			private function updateRunplanBack(res:String):void{
+				DataManager.showErrorMessage(res);
+			}
+			
+			protected function state_changeHandler(str:String):void
+			{
+				if(state.selectedItem != null){
+					var obj:Object = new Object();
+					obj.type_id="all";
+					obj.state=str;
+					RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.runplanManager.gjtRunplan.GJTRunplan","getHeadendList",obj,getHeadendListBack,DataManager.showErrorMessageBack));
+				}
+			}
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%" verticalAlign="middle" top="10"  horizontalAlign="center">
+	<s:HGroup width="100%" height="100%">
+		<s:VGroup width="50%" verticalAlign="middle" horizontalAlign="center" height="100%" >
+			<s:Label text="查询条件" color="red"/>
+			<s:BorderContainer alpha="1" width="100%" height="100%" >
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle" horizontalAlign="center"/>
+				</s:layout>
+			<s:Form width="100%" height="100%" id="gj" visible="true" includeInLayout="true">
+				<s:FormItem label="季节代号">
+					<s:ComboBox id="season" dataProvider="{seasonArr}" labelField="code" width="100"/>
+				</s:FormItem>
+				<s:FormItem label="发射台">
+					<s:ComboBox id="station" width="100" dataProvider="{stationArr}" labelField="name"/>
+				</s:FormItem>
+				<s:FormItem label="机号">
+					<s:TextInput width="100" id="transmitor_no"/>
+				</s:FormItem>
+				<s:FormItem label="频率">
+					<s:TextInput width="100" id="freq"/>
+				</s:FormItem>
+				<s:FormItem label="开始时间">
+					<timecomp:TimeNew id="starttime"  dateDisplay="timenew"/>
+				</s:FormItem>
+				<s:FormItem label="结束时间">
+					<timecomp:TimeNew id="endtime"  dateDisplay="timenew"/>
+				</s:FormItem>
+			</s:Form>
+				<s:Form width="100%" height="100%" id="hw" visible="false" includeInLayout="false">
+					<s:FormItem label="大洲">
+						<s:DropDownList id="state" dataProvider="{DataManager.satateBeanArrAll}" change="state_changeHandler(this.state.selectedItem.state)"  labelField="state_name"/>
+					</s:FormItem>
+					<s:FormItem label="站点">
+						<checkbox:CheckDropList id="headend" width="150" dataProvider="{headArr}" filedLabel="label"/>
+					</s:FormItem>
+					<s:FormItem label="季节类型">
+						<s:DropDownList id="seasonType" selectedIndex="0" dataProvider="{new ArrayCollection([{label:'',value:''},{label:'夏季',value:'夏季'},{label:'冬季',value:'冬季'}])}"/>
+					</s:FormItem>
+				</s:Form>
+			</s:BorderContainer>
+		</s:VGroup>
+		<s:VGroup width="50%" height="100%" verticalAlign="middle" horizontalAlign="center">
+			<s:Label text="修改条件" color="red"/>
+			<s:BorderContainer alpha="1" width="100%" height="100%" >
+				<s:layout>
+					<s:HorizontalLayout verticalAlign="middle" horizontalAlign="center"/>
+				</s:layout>
+				<s:Form width="100%" height="100%">
+					<s:FormItem label="发射台" id="stationItem" visible="true" includeInLayout="true">
+						<s:ComboBox id="station1" width="100" dataProvider="{stationArr}" labelField="name"/>
+					</s:FormItem>
+					<s:FormItem label="机号" id="transmitorItem" visible="true" includeInLayout="true">
+						<s:TextInput width="100" id="transmitor_no1"/>
+					</s:FormItem>
+					<s:FormItem label="频率" id="freqItem" visible="true" includeInLayout="true">
+						<s:TextInput width="100" id="freq1"/>
+					</s:FormItem>
+					<s:FormItem label="启用期">
+						<timecomp:TimeNew id="valid_starttime"/>
+					</s:FormItem> 
+					<s:FormItem label="停用期">
+						<timecomp:TimeNew id="valid_endtime"/>
+					</s:FormItem>
+				</s:Form>
+			</s:BorderContainer>
+		</s:VGroup>
+	</s:HGroup>
+	<s:HGroup width="100%" height="30" verticalAlign="middle" horizontalAlign="center" >
+		<s:Button label="批量修改" click="batchUpdate()"/>
+		<s:Button label="关闭窗口" click="myCloseHandler()"/>
+	</s:HGroup>
+	</s:VGroup>
+</s:TitleWindow>

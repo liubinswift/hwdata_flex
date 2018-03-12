@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" close="close(event);"
+			   xmlns:mx="library://ns.adobe.com/flex/mx" 
+			   x="{(Capabilities.screenResolutionX - width) / 2}" 
+			   y="{(Capabilities.screenResolutionY - height) / 2 - 50}" alpha="1" 
+			   width="100%" height="400"
+			   creationComplete="init();" 
+			   xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+			   xmlns:ip="com.viewscenes.utils.tools.*"
+			   xmlns:global="com.viewscenes.global.*"
+			   xmlns:checkbox="com.viewscenes.global.comp.checkbox.*"
+			   mouseDown="startDrag()"
+			   title="添加安装设备信息"
+			   xmlns:net="flash.net.*"
+			   mouseUp="stopDrag();">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.editor.ComboBoxEditor;
+			import com.morcha4.util.RendererUtil;
+			import com.viewscenes.beans.devicemgr.RadioEquInstallBean;
+			import com.viewscenes.beans.pub.ResHeadendBean;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+			import com.viewscenes.utils.StringTool;
+			
+			import mx.collections.ArrayCollection;
+			import mx.managers.PopUpManager;
+			
+			import spark.events.GridEvent;
+			
+			
+			[Bindable]
+			private var stateArr:ArrayCollection=new ArrayCollection([{state:"使用",code:"0"},{state:"备用",code:"1"},{state:"报废",code:"2"}]);
+			//遥控站点
+			[Bindable]
+			public var ykzArr:ArrayCollection = new ArrayCollection;
+			//采集点
+			[Bindable]
+			public var cjdArr:ArrayCollection = new ArrayCollection;
+			//站点
+			[Bindable]
+			public var headendArr:ArrayCollection = new ArrayCollection;
+			[Bindable]
+			private var typeArray:ArrayCollection = new ArrayCollection([{label:"遥控站",code:"102"},{label:"采集点",code:"101"}]);
+			[Bindable]
+			private var listEqu:ArrayCollection=new ArrayCollection();
+			[Bindable]
+			private var bianhaoArray:ArrayCollection =
+				new ArrayCollection([					
+					{equ_name:"BXM-252A",value:"BXM-252A"},					
+					{equ_name:"KVM",value:"KVM"},
+					{equ_name:"NI-1000",value:"NI-1000"},
+					{equ_name:"SF-RM",value:"SF-RM"},
+					{equ_name:"UPS",value:"UPS"},
+					{equ_name:"电源控制器",value:"电源控制器"},
+					{equ_name:"路由器",value:"路由器"},
+					{equ_name:"天线",value:"天线"},
+					{equ_name:"天线控制器",value:"天线控制器"}
+					
+				]);
+			
+			private function init():void{
+				for(var i:int = 0;i<DataManager.getHeadendByState("all","101",true).length; i++){
+					var obj:Object = DataManager.getHeadendByState("all","101",true).getItemAt(i);
+					
+					cjdArr.addItemAt(obj,i);
+				}
+				for(var i:int = 0;i<DataManager.getHeadendByState("all","102",true).length; i++){
+					var obj:Object = DataManager.getHeadendByState("all","102",true).getItemAt(i);
+					
+					ykzArr.addItemAt(obj,i);
+				}
+				TypeChange();
+			}
+			private function TypeChange():void  //指标设备报警选择
+			{
+				if(this.Type.selectedItem.label.toString()=="采集点")
+				{
+					headendArr.removeAll();
+					var arrlist:ArrayCollection =  StringTool.clone(cjdArr);
+					headendArr=arrlist;
+				}
+				else if(this.Type.selectedItem.label.toString()=="遥控站")
+				{				
+					headendArr.removeAll();
+					var arrlist:ArrayCollection =  StringTool.clone(ykzArr);
+					headendArr=arrlist;
+				}
+				
+			}
+			/**
+			 * 点击datagrid某行数据触发的方法
+			 * */
+			private function onGridClick(event:GridEvent):void{
+				if(grid.dataProvider.length<=0){
+					return;
+				}else{
+					if(event.item==null){
+						return;
+					}else{
+						switch(grid.columns[event.columnIndex].dataField){
+							case "equ_name":{
+								ComboBoxEditor.dataProvider=bianhaoArray;
+								
+								break;
+							} 
+							case "state":
+							{
+								
+								ComboBoxEditor.dataProvider=stateArr;;
+								
+							}
+						}				
+					}
+					
+				}
+				
+			}
+			private function addEqu():void{
+				var obj:Object=new Object();
+				obj.equ_name="NI-1000";
+				obj.state="备用";
+				obj.equ_id="";
+				listEqu.addItem(obj);
+			}
+			private function insertEqu():void{
+				if(isOK()){
+					return ;
+				}
+				var obj:Object=new Object();
+				obj.equList=equList();
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.devicemgr.equinstall.EquInstallManager","insertEquInstallArr",obj,_addEqu,_addEqu));
+			}
+			
+			public function _addEqu(res:String):void{				
+				MM.show(res);
+				this.dispatchEvent(new Event("Equ_list_refresh"));
+				close(null);
+			}
+			
+			private function close(e:Event):void{
+				PopUpManager.removePopUp(this);
+				
+			}
+			private function equList():ArrayCollection{
+				var resaultArr:ArrayCollection=new ArrayCollection();
+				var head_name:String=station.selectedItem.shortname;
+				var mailTime:String=mail_time.text;
+				var orderNo:String=order_no.text;
+				for(var i:int=0;i<listEqu.length;i++){
+					var bean:RadioEquInstallBean=new RadioEquInstallBean();
+					bean.equ_name=listEqu[i].equ_name;					
+					bean.equ_id=listEqu[i].equ_id;
+					var state:String=listEqu[i].state;					
+					if(state=="使用"){
+						bean.status="0";
+					}else if(state=="备用"){
+						bean.status="1";
+					}else{
+						bean.status="2";
+					}
+					bean.head_name=head_name;
+					bean.mail_time=mailTime;
+					bean.order_no=orderNo;
+					var headBean:ResHeadendBean=DataManager.getHeadendByCode(station.selectedItem.code);
+					if(headBean!=null){
+						bean.head_id=headBean.head_id;
+						bean.head_code=station.selectedItem.code;
+					}else if(bean.head_name=="蒙罗维"){
+						bean.head_id=DataManager.getHeadendByCode(this.station.selectedItem.code+2).head_id;
+						bean.head_code=this.station.selectedItem.code+2;
+					}else{
+						
+						if(bean.equ_name=="NI-1000"){
+							bean.head_id=DataManager.getHeadendByCode(station.selectedItem.code+"A").head_id;
+							bean.head_code=station.selectedItem.code+"A";						
+						}else{
+							bean.head_id=DataManager.getHeadendByCode(station.selectedItem.code+"B").head_id;
+							bean.head_code=station.selectedItem.code+"B";
+						}
+					}
+					resaultArr.addItem(bean);
+				}
+				return resaultArr;
+				
+			}
+			private function deleEqu(obj:Object):void{
+				obj.data.isSelected="true";
+				MM.show("您确定要删除吗？","删除确认",'',_deleteEqu,true,null,null);
+			}
+			private function _deleteEqu():void{
+				for(var i:int=grid.dataProvider.length-1;i>=0;i--) //在前台删除
+				{
+					if(grid.dataProvider[i].isSelected=="true")
+					{
+						grid.dataProvider.removeItemAt(i);
+					}
+				}
+			}
+			private function isOK():Boolean{
+				if(Type.selectedIndex==-1){
+					MM.show("请选择站点类别");
+					return true;
+				}
+				if(station.selectedIndex==-1){
+					MM.show("请选择站点");
+					return true;
+				}
+				if(listEqu.length==0){
+					MM.show("设备不能为空,请添加");
+					return true;
+				}
+				if(mail_time.text==""){
+					MM.show("邮寄时间不能为空,请添加");
+					return true;
+				}
+				if(order_no.text==""){
+					MM.show("邮件单号不能为空,请添加");
+					return true;
+				}
+				return false;
+			}		
+		]]>
+	</fx:Script>
+	<s:HGroup width="100%"   verticalAlign="middle">
+		<s:VGroup width="100%" height="100%"  verticalAlign="middle">
+			<s:Spacer width="100%" height="10"/>
+			<s:HGroup verticalAlign="middle">
+				<s:Label text="站点类别" />
+				<s:ComboBox id="Type"  dataProvider="{typeArray}" change="TypeChange()" requireSelection="true" height="25"/>
+				
+				<s:Label text="站点名称 " />
+				<s:ComboBox id="station" dataProvider="{headendArr}"    labelField="shortname"/>
+										
+				<s:Label text="邮寄时间" />
+				<timecomp:TimeNew id="mail_time" dateDisplay="date"/>
+				
+				<s:Label text="邮件单号"/>
+				<s:TextInput id="order_no" />															
+			</s:HGroup>
+			<s:Group width="100%" height="100%" >
+				<s:DataGrid id="grid"  height="100%"  width="100%" editable="true" dataProvider="{listEqu}" textAlign="center" gridClick="onGridClick(event)" >					
+					<s:columns>
+						<s:ArrayCollection>
+							<s:GridColumn headerText="设备名称" dataField="equ_name" itemEditor="com.morcha4.editor.ComboBoxEditor"/>
+							<s:GridColumn headerText="设备编号" dataField="equ_id"/>	
+							<s:GridColumn headerText="设备状态" dataField="state" itemEditor="com.morcha4.editor.ComboBoxEditor"/>	
+							<s:GridColumn  minWidth="50" headerText="删除该项" editable="false" itemRenderer="{RendererUtil.getButtonRenderer('删除本设备',deleEqu)}"/>							
+						</s:ArrayCollection>
+					</s:columns>
+				</s:DataGrid>
+			</s:Group>
+			<s:HGroup width="100%"  height="30" horizontalAlign="center">
+				
+				<s:Button label="添加设备" click="addEqu()" width="100"/>
+				<s:Button buttonMode="true" label="确认添加" click="insertEqu();" width="100"/>
+				<s:Button buttonMode="true" label="关闭" click="close(event)" width="100"/>
+				
+			</s:HGroup>
+		</s:VGroup>
+		
+	</s:HGroup> 
+	
+</s:TitleWindow>

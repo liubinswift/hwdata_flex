@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 xmlns:system="com.morcha4.frame.system.*"
+				 width="100%" height="100%" 
+				 xmlns:timecomp="com.viewscenes.utils.timecomp.*"
+				 xmlns:global="com.viewscenes.global.*" 
+				 xmlns:flipBar="com.viewscenes.utils.flipBar.*"
+				 creationComplete="init()"
+				 >
+	<system:layout>
+		<s:HorizontalLayout horizontalAlign="center"/>
+	</system:layout>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.viewscenes.global.DataManager;
+			
+			
+			protected function init():void
+			{
+				this.button1_clickHandler();
+			}
+			protected function button1_clickHandler():void
+			{
+				this.check.enabled=false;
+				var obj:Object=new Object();				
+				RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.common.Common","checkSystemRunning",obj,checkSystemRunningReturn,DataManager.showErrorMessageBack));
+				
+			}
+			protected function checkSystemRunningReturn(str:String):void
+			{
+				var lists:Array=  str.split("&&");
+				for(var i=0;i<lists.length;i++)
+				{
+					var ips:Array=  lists[i].split(",");
+					var label:String=ips[0];
+					var trueOrfalse:String=ips[1];
+					if(label=="Web服务器集群")
+					{
+						if(trueOrfalse=="0")
+						{
+							line1b.visible=true;
+							line1a.visible=false;
+						}else
+						{	
+							line1a.visible=true;
+							line1b.visible=false;
+						}
+					}else if(label=="存储服务器集群")
+					{
+						if(trueOrfalse=="0")
+						{	
+							line2a.visible=false;
+							line2b.visible=true;
+						}else
+						{
+							line2b.visible=false;
+							line2a.visible=true;
+						}
+					}else if(label=="防病毒服务器")
+					{
+						if(trueOrfalse=="0")
+						{	
+							line3a.visible=false;
+							line3b.visible=true;
+						}else
+						{	
+							line3a.visible=true;
+							line3b.visible=false;
+						}
+					}else if(label=="防火墙")
+					{
+						if(trueOrfalse=="0")
+						{	
+							line4a.visible=false;
+							line4b.visible=true;
+						}else
+						{	
+							line4a.visible=true;
+							line4b.visible=false;
+						}
+					}else if(label=="工作站1")
+					{
+						if(trueOrfalse=="0")
+						{	
+							line5a.visible=false;
+							line5b.visible=true;
+						}else
+						{	
+							line5a.visible=true;
+							line5b.visible=false;
+						}
+					}else if(label=="工作站2")
+					{
+						if(trueOrfalse=="0")
+						{
+							line6b.visible=true;
+							line6a.visible=false;
+						}else
+						{	
+							line6a.visible=true;
+							line6b.visible=false;
+						}
+					}else if(label=="数据交换服务器")
+					{
+						if(trueOrfalse=="0")
+						{	
+							line8a.visible=false;
+							line8b.visible=true;
+						}else
+						{
+							line8b.visible=false;
+							line8a.visible=true;
+						}
+					}else if(label=="数据库服务器集群")
+					{
+						if(trueOrfalse=="0")
+						{	
+							line9a.visible=false;
+							line9b.visible=true;
+						}else
+						{	
+							line9a.visible=true;
+							line9b.visible=false;
+						}
+					}else if(label=="业务网交换机")
+					{
+						if(trueOrfalse=="0")
+						{	
+							line10a.visible=false;
+							line10b.visible=true;
+						}else
+						{	
+							line10a.visible=true;
+							line10b.visible=false;
+						}
+					}else if(label=="应用服务器集群")
+					{
+						if(trueOrfalse=="0")
+						{	
+							line11a.visible=false;
+							line11b.visible=true;
+						}else
+						{	
+							line11a.visible=true;
+							line11b.visible=false;
+						}
+					}
+				}
+				this.check.enabled=true;
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	
+	<s:Group  width="100%" height="100%" >
+		<s:Rect alpha="0.5" x="0" y="0" width="100%" height="100%">
+			<s:fill>
+				<mx:LinearGradient rotation="90">
+					<mx:entries>
+						<mx:GradientEntry color="0x8b4513" ratio="0.00" alpha="1"/>
+						<mx:GradientEntry color="0x00CC00" ratio="0.50" alpha="1"/>
+						<mx:GradientEntry color="0x8b4513" ratio="1.00" alpha="1"/>
+					</mx:entries>
+				</mx:LinearGradient>
+			</s:fill>
+			
+		</s:Rect>
+		<!--s:Image width="100%" height="100%" source="com/viewscenes/images/module/checkSystemRunning/background.jpg"/-->
+		<s:Image x="{this.width>1117?(this.width-1117)/2:0}" y="0"  id="base" source="com/viewscenes/images/module/checkSystemRunning/basenew.png"/>
+		<s:Button buttonMode="true" x="{this.width>1117?(this.width-160)/2:(1117-160)/2}" y="30" id="check" label="查看网络即时状态" click="button1_clickHandler()"></s:Button>
+		<s:Image x="{this.width>1117?(this.width-1117)/2+550:550}"   y="193" id="line1a"  source="com/viewscenes/images/module/checkSystemRunning/green/websevers.gif"/>
+		<s:Image x="{this.width>1117?(this.width-1117)/2+127:127}"   y="259" id="line2a"  source="com/viewscenes/images/module/checkSystemRunning/green/savesevers.gif"/>
+		<s:Image x="{this.width>1117?(this.width-1117)/2+388:388}"   y="185" id="line3a"  source="com/viewscenes/images/module/checkSystemRunning/green/protectsevers.gif"/>
+		<s:Image x="{this.width>1117?(this.width-1117)/2+1000:1000}" y="318" id="line4a"  source="com/viewscenes/images/module/checkSystemRunning/green/firewall.gif"/>
+		<s:Image x="{this.width>1117?(this.width-1117)/2+750:750}"   y="177" id="line5a"  source="com/viewscenes/images/module/checkSystemRunning/green/workstation1.gif"/>
+		<s:Image x="{this.width>1117?(this.width-1117)/2+850:850}"   y="177" id="line6a"  source="com/viewscenes/images/module/checkSystemRunning/green/workstation2.gif"/>
+		<s:Image x="{this.width>1117?(this.width-1117)/2+127:127}"   y="353" id="line7a"  source="com/viewscenes/images/module/checkSystemRunning/green/public.gif"/>
+		<s:Image x="{this.width>1117?(this.width-1117)/2+310:310}"   y="259" id="line8a"  source="com/viewscenes/images/module/checkSystemRunning/green/data.gif"/>
+		<s:Image x="{this.width>1117?(this.width-1117)/2+622:622}"   y="259" id="line9a"  source="com/viewscenes/images/module/checkSystemRunning/green/datasevers.gif"/>
+		<s:Image x="{this.width>1117?(this.width-1117)/2+550:550}"   y="348" id="line10a" source="com/viewscenes/images/module/checkSystemRunning/green/switch.gif"/>
+		<s:Image x="{this.width>1117?(this.width-1117)/2+460:460}"   y="259" id="line11a" source="com/viewscenes/images/module/checkSystemRunning/green/appsevers.gif"/>
+		<s:Image x="{this.width>1117?(this.width-1117)/2+550:550}"   y="193" id="line1b"  source="com/viewscenes/images/module/checkSystemRunning/red/websevers.gif" visible="false"/>
+		<s:Image x="{this.width>1117?(this.width-1117)/2+127:127}"   y="259" id="line2b"  source="com/viewscenes/images/module/checkSystemRunning/red/savesevers.gif" visible="false"/>
+		<s:Image x="{this.width>1117?(this.width-1117)/2+388:388}"   y="185" id="line3b"  source="com/viewscenes/images/module/checkSystemRunning/red/protectsevers.gif" visible="false"/>
+		<s:Image x="{this.width>1117?(this.width-1117)/2+1000:1000}" y="329" id="line4b"  source="com/viewscenes/images/module/checkSystemRunning/red/firewall.gif" visible="false"/>
+		<s:Image x="{this.width>1117?(this.width-1117)/2+750:750}"   y="177" id="line5b"  source="com/viewscenes/images/module/checkSystemRunning/red/workstation1.gif" visible="false"/>
+		<s:Image x="{this.width>1117?(this.width-1117)/2+850:850}"   y="177" id="line6b"  source="com/viewscenes/images/module/checkSystemRunning/red/workstation2.gif" visible="false"/>
+		<s:Image x="{this.width>1117?(this.width-1117)/2+127:127}"   y="353" id="line7b"  source="com/viewscenes/images/module/checkSystemRunning/red/public.gif" visible="false"/>
+		<s:Image x="{this.width>1117?(this.width-1117)/2+310:310}"   y="259" id="line8b"  source="com/viewscenes/images/module/checkSystemRunning/red/data.gif" visible="false"/>
+		<s:Image x="{this.width>1117?(this.width-1117)/2+622:622}"   y="259" id="line9b"  source="com/viewscenes/images/module/checkSystemRunning/red/datasevers.gif" visible="false"/>
+		<s:Image x="{this.width>1117?(this.width-1117)/2+550:550}"   y="348" id="line10b" source="com/viewscenes/images/module/checkSystemRunning/red/switch.gif" visible="false"/>
+		<s:Image x="{this.width>1117?(this.width-1117)/2+460:460}"   y="259" id="line11b" source="com/viewscenes/images/module/checkSystemRunning/red/appsevers.gif" visible="false"/>
+	</s:Group>
+</system:BasePage>

@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 xmlns:system="com.morcha4.frame.system.*"
+				 width="100%" height="100%" 
+				 creationComplete="init(event)"
+				 xmlns:timecomp="com.viewscenes.utils.timecomp.*" xmlns:flipBar="com.viewscenes.utils.flipBar.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.RPC.RPCManager;
+			import com.morcha4.RPC.request.RORequestParam;
+			import com.morcha4.frame.system.AdvancedEvent;
+			import com.morcha4.frame.system.EventBus;
+			import com.morcha4.util.RendererUtil;
+			import com.viewscenes.beans.log.NotificationBean;
+			import com.viewscenes.global.DataManager;
+			import com.viewscenes.global.comp.MM;
+			
+			import mx.events.FlexEvent;
+			import mx.managers.PopUpManager;
+			[Bindable]
+			private var allselect:String="false";
+			[Bindable]
+			public var querydata:ArrayCollection = new ArrayCollection();
+			
+			private function clickChooseAll():void{
+				if(allselect=="false")
+				{
+					allselect="true";
+				}else
+				{
+					allselect="false";	
+				}
+				
+				for(var i:int=0;i<querydata.length;i++)
+				{
+					querydata.getItemAt(i).isSelected=allselect;
+					querydata.refresh();
+					datagrid.dataProvider = querydata;
+				}
+				
+				
+			  }
+			/*
+			**	通知查询方法
+			*/
+			public function clickLogQuery(event:AdvancedEvent=null):void{
+				con_clewlabel(clew_label,true,'正在查询，请稍候...');
+				querydata = new ArrayCollection();
+				
+				var obj:NotificationBean = new NotificationBean();
+
+				obj.end_time=this.oEndValidDate.text;
+				obj.start_time	=this.oStartValidDate.text;
+			
+				pagebar.m_sendCmd( new RORequestParam("com.viewscenes.web.log.Log","getLogList",obj,clickQueryProcess,DataManager.showErrorMessageBack));
+				
+			}
+			private function clickQueryProcess(obj:ArrayCollection):void{
+				con_clewlabel(clew_label,false);
+				querydata.removeAll();
+				querydata=obj;	
+				if(obj.length==0){
+					
+					con_clewlabel(clew_label,true,"无查询数据！");
+				}
+				
+			}
+			/**
+			 * 控制datagrid的提示框是否显示，以及显示内容
+			 * author:cht
+			 * **/
+			public function con_clewlabel(_component:Label,_visible:Boolean,_label:String="")
+			{
+				_component.visible=_visible;
+				_component.includeInLayout=_visible;
+				_component.text=_label;
+			}
+			var dellist:ArrayCollection = new ArrayCollection();
+			private function clickDeleteChooseComfirm():void{
+				dellist.removeAll();
+				for(var i:int=0;i<querydata.length;i++)
+				{
+					if(querydata.getItemAt(i).isSelected=="true")
+					{
+						
+						dellist.addItem(querydata.getItemAt(i));
+						
+					}
+				}
+				if(dellist.length!=0){
+					MM.show("您确定删除吗?","删除确认",'',clickDeleteChoose,true,null,null);
+				}
+				else{
+					MM.show("请选择要删除的通知","警告");
+					return;
+				}		
+				
+			}
+			private function clickDeleteChoose():void{
+				var request:RORequestParam = new RORequestParam("com.viewscenes.web.log.Log","delLogList",dellist,clickDeleteChooseProcess,DataManager.showErrorMessageBack);
+				RPCManager.sendCmd(request); 
+			}
+			private function clickDeleteChooseProcess(retStr:String):void{
+				
+					DataManager.showErrorMessage("删除成功！");
+					clickLogQuery();
+			}
+			private function addNewLog():void{
+			
+				var taskResult:AddNotificationDesc = AddNotificationDesc(PopUpManager.createPopUp(this,AddNotificationDesc,true,null));	
+				PopUpManager.centerPopUp(taskResult);
+				taskResult.x=400;
+				taskResult.y=120;
+			}
+			private function updateLog(obj:Object):void{
+				
+				var taskResult:AddNotificationDesc = AddNotificationDesc(PopUpManager.createPopUp(this,AddNotificationDesc,true,null));	
+				PopUpManager.centerPopUp(taskResult);
+			
+				taskResult.title="通知详细";
+				taskResult.x=400;
+				taskResult.y=120;
+				taskResult.logdesc=obj.data;
+			}
+		
+			//选择点中后执行的方法
+			[Bindable]
+			public var selectedCounts:int =0;
+			private function changeSelect(obj:Object):void{
+				
+				if(obj.data.isSelected=="true"){
+					this.selectedCounts=selectedCounts+1;  
+				}else{
+					this.selectedCounts=selectedCounts-1; 
+				}
+			}
+			
+			protected function init(event:FlexEvent):void
+			{
+				// TODO Auto-generated method stub
+				this.oStartValidDate.text=this.oStartValidDate.text.substring(0,11)+"00:00:00";
+				EventBus.addEventListener("refrushLogQuery",clickLogQuery);
+			}
+			
+		]]>
+	</fx:Script>
+	<s:VGroup width="100%" height="100%">
+		<s:HGroup width="100%" paddingLeft="10"   verticalAlign="middle">
+			<s:Label text="开始时间"/>
+			<timecomp:TimeNew  id="oStartValidDate" dateDisplay="all"/>
+			<s:Spacer width="10"/>
+			<s:Label text="结束时间" />
+			<timecomp:TimeNew  id="oEndValidDate" dateDisplay="all"/>
+			<s:Button buttonMode="true" click="clickLogQuery();" label="查询" />
+			<s:Spacer width="10"/>
+			<s:Button buttonMode="true" click="clickChooseAll();" label="全选" />
+			<s:Spacer width="10"/>
+			<s:Button buttonMode="true" click="clickDeleteChooseComfirm();"  label="删除所选通知" />
+			<s:Spacer width="10"/>
+			<s:Button buttonMode="true" click="addNewLog();" label="录入" />
+			<s:Spacer width="26"/>
+			<s:Label text="正在查询，请稍候..."   fontSize="12" color="#ff0000" id="clew_label" y="{datagrid.columnHeaderGroup.height+10}" width="100%" textAlign="center"  visible="false" includeInLayout="false" />				
+			
+		</s:HGroup>
+		<s:HGroup width="100%" height="100%">
+			<s:DataGrid id="datagrid" width="100%"    textAlign="center" height="100%" dataProvider="{querydata}"  showDataTips="true">
+				<s:columns>  
+					<s:ArrayCollection>
+						
+						<s:GridColumn headerText="选择"   itemRenderer="{RendererUtil.getCheckBoxRenderer(changeSelect)}" />
+
+						
+						<s:GridColumn headerText="开始时间" dataField="start_time"/>
+						<s:GridColumn headerText="结束时间" dataField="end_time" />
+						<s:GridColumn headerText="录入人 " dataField="from_username" />
+						<s:GridColumn headerText="录入日期 " dataField="create_time" />
+						<s:GridColumn headerText="通知下发群体 " dataField="to_username"  width="200"/>
+						<s:GridColumn headerText="详细" dataField="description" />
+						
+						<s:GridColumn headerText="修改"    itemRenderer="{RendererUtil.getButtonRenderer('修改',updateLog,null)}">	
+						</s:GridColumn>
+					</s:ArrayCollection>
+				</s:columns>
+			</s:DataGrid>
+			
+		</s:HGroup>
+		<flipBar:PageBar width="100%" height="20" id="pagebar" rowConutOfPage="20" totalPageQuery="5" />
+		
+		
+	</s:VGroup>
+</system:BasePage>

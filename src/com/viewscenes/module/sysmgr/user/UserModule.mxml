@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<system:BasePage xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" width="100%" height="100%"
+				 xmlns:mx="library://ns.adobe.com/flex/mx" 
+				 xmlns:system="com.morcha4.frame.system.*"
+				 xmlns:user="com.viewscenes.module.sysmgr.user.*"
+				 creationComplete="init()" xmlns:tabbar="com.morcha4.ui.tabbar.*">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.morcha4.frame.system.AdvancedEvent;
+			import com.viewscenes.*;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			
+			import spark.events.IndexChangeEvent;
+		
+			
+			protected function init():void
+			{	
+				userList.userModule=this;
+				addEventListener("roleItemClick",roleItmeClick);
+				
+			}
+			
+			private function roleItmeClick(e:AdvancedEvent):void{
+					userList.getUserListByRoleId(e);
+					funcList.getFuncTreeByRoleId(e);
+			}
+			private function itemClick(event:IndexChangeEvent):void{
+				if (event.target.selectedItem.id == "userContent"){
+					vs.selectedIndex = 0;
+				}else{
+					vs.selectedIndex = 1;
+				}
+			}
+			
+
+			
+		]]>
+	</fx:Script>
+	
+	<s:Group width="100%" height="100%">
+		<s:layout>
+			<s:HorizontalLayout gap="0"/>
+		</s:layout>
+		
+		
+		<user:RoleList id="roleList" width="300" height="100%"/>
+		<s:Group width="15" height="100%"/>
+		<s:VGroup gap="0" width="100%"  height="100%">
+			
+			<s:TabBar dataProvider="{vs}" change="itemClick(event)"/> 
+			
+			<mx:ViewStack id="vs" width="100%" height="100%" creationPolicy="all" cachePolicy="auto">
+				<s:NavigatorContent id="userContent" label="用户列表"> 
+					<user:UserList id="userList" width="100%" height="100%"/>
+				</s:NavigatorContent> 
+				<s:NavigatorContent id="funcContent" label="权限列表"> 
+					<user:FunctionList id="funcList" width="100%" height="100%"/>
+				</s:NavigatorContent>
+			</mx:ViewStack>
+		</s:VGroup>	
+			
+		
+	</s:Group>
+	
+	
+	
+</system:BasePage>
