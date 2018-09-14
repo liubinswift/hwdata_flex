@@ -75,6 +75,8 @@
 			
 			[Bindable]
 			private var comArray:ArrayCollection = new ArrayCollection([{label:"宽带",code:"2"},{label:"拨号",code:"3"}]);
+			[Bindable]
+			private var comprotocolArray:ArrayCollection = new ArrayCollection([{label:"未迁移",code:"1"},{label:"已迁移",code:"2"}]);
 			
 			[Bindable]
 			private var isdel:ArrayCollection = new ArrayCollection([{label:"否",code:"0"},{label:"是",code:"1"}]);
@@ -151,7 +153,7 @@
 				HeadObj.comphone=comphone.text;
 				HeadObj.url=url.text;
 				HeadObj.com_id=com_id.selectedItem.code;
-				HeadObj.com_protocol=com_protocol.text;
+				HeadObj.com_protocol=com_protocol.selectedItem.code;
 				HeadObj.site_status=site_status.selectedItem.value;
 //				HeadObj.com_status=com_status.text;
 //				HeadObj.fault_status=fault_status.text;
@@ -485,7 +487,7 @@
 						<s:ComboBox id="com_id" dataProvider="{comArray}" selectedIndex="{HeadObj.com_id}"  change="{HeadObj.com_id=com_id.selectedItem.code}" requireSelection="true"/>
 					</s:FormItem>
 					<s:FormItem label="通信协议" height="20">
-						<s:TextInput id="com_protocol" change="{HeadObj.com_protocol=com_protocol.text}"/>
+						<s:ComboBox id="com_protocol" dataProvider="{comprotocolArray}" selectedIndex="{HeadObj.com_protocol}"   requireSelection="true"/>
 					</s:FormItem>
 					<s:FormItem label="IP地址"  height="20">
 						<ip:IPComponent width="150" id="ip" /><s:Label text="*" color="0xff0000"/>
