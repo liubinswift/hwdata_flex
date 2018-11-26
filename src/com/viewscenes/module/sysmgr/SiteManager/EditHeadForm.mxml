@@ -101,7 +101,7 @@
 			[Bindable]
 			private var type101Arr:ArrayCollection=new ArrayCollection(["圣世祺_采集点_NI_V8","圣世祺_采集点_713_V8","圣世祺_采集点_FHD_V8","金石威视_采集点_VS_V8","中电22所_采集点_V8","度纬_采集点_AMFT_V8","泰顺_采集点_TS_V8"]);
 			[Bindable]
-			private var type102Arr:ArrayCollection=new ArrayCollection(["圣世祺_遥控站_NI_V8","圣世祺_遥控站_713_V8","圣世祺_遥控站_FHD_V8","金石威视_遥控站_VS_V8","中电22所_遥控站_V8","度纬_遥控站_AMFT_V8","泰顺_遥控站_TS_V8"]);
+			private var type102Arr:ArrayCollection=new ArrayCollection(["圣世祺_遥控站_NI_V8","圣世祺_遥控站_713_V8","圣世祺_遥控站_FHD_V8","金石威视_遥控站_VS_V8","中电22所_遥控站_V8","度纬_遥控站_AMFT_V8","泰顺_遥控站_TS_V8","聚星_遥控站_JXI3000_V8"]);
 			
 			private function init():void{	
 			}
