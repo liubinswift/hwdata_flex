@@ -89,17 +89,9 @@
 			
 			private function initApp():void{
 				EventBus.addEventListener(EventDeclare.SHOW_MENU_2,basepage1_PAGE_CLOSEHandler);
-				
-			
-				
-				
-		
 				typeChange();
 				getLanguageList();
 				getStationList();
-				
-				
-			
 			}
 			/**
 			 * 
@@ -113,7 +105,7 @@
 			private function getStationListBack(arr:ArrayCollection):void{
 				stationArr.removeAll();
 				stationArr = arr;
-				stationArr.addItemAt({name:"全部",name:null},0);
+				stationArr.addItemAt({name:"全部",value:null},0);
 				station.selectedIndex = 0;
 			}
 			
@@ -592,6 +584,16 @@
 				}
 			}
 			/**
+			 * 打分人
+			 */
+			private function markUserFunction(item:Object,gc:GridColumn):String{
+				if(item.edit_user!=null&&item.edit_user!=""){
+					return item.edit_user;
+				}else {
+					return item.mark_user
+				}
+			}
+			/**
 			 * 节目标签
 			 */
 			private function programLabelFunc(item:Object,gc:GridColumn):String{
@@ -678,6 +680,7 @@
 								<s:GridColumn headerText="发射台"  	labelFunction="stationLabelFunc" width="110"/>
 								<s:GridColumn headerText="语言" 		labelFunction="programLabelFunc" width="110"/>
 								<s:GridColumn headerText="分数"  	labelFunction="markFunction"/>
+								<s:GridColumn headerText="打分人"  	labelFunction="markUserFunction"/>
 								<s:GridColumn headerText="播放"   itemRenderer="{RendererUtil.getButtonRenderer('播放',playAndMark)}"/>
 								<s:GridColumn headerText="下载"   itemRenderer="{RendererUtil.getButtonRenderer('下载',downloadRec)}"/>
 								<s:GridColumn headerText="删除"   itemRenderer="{RendererUtil.getButtonRenderer('删除',delRecFile)}"/>
