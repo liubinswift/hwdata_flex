@@ -74,7 +74,7 @@
 				"summertime":""};
 			
 			[Bindable]
-			private var comArray:ArrayCollection = new ArrayCollection([{label:"宽带",code:"2"},{label:"拨号",code:"3"}]);
+			private var comArray:ArrayCollection = new ArrayCollection([{label:"统计",code:"1"},{label:"不统计",code:"0"}]);
 			[Bindable]
 			private var comprotocolArray:ArrayCollection = new ArrayCollection([{label:"未迁移",code:"1"},{label:"已迁移",code:"2"}]);
 			
@@ -483,7 +483,7 @@
 					<s:FormItem label="下发地址"  height="20" >
 						<s:TextInput id="url"  change="{HeadObj.url=url.text}" text="http://114.242.154.190:13601/Receiver/Enter/"/>
 					</s:FormItem>
-					<s:FormItem label="通信类型" height="20">
+					<s:FormItem label="是否统计" height="20">
 						<s:ComboBox id="com_id" dataProvider="{comArray}" selectedIndex="{HeadObj.com_id}"  change="{HeadObj.com_id=com_id.selectedItem.code}" requireSelection="true"/>
 					</s:FormItem>
 					<s:FormItem label="是否迁移" height="20">
