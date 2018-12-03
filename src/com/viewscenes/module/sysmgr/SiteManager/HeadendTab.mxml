@@ -49,6 +49,11 @@
 			private var updateListStat:ArrayCollection = new ArrayCollection();
 			[Bindable] 
 			private var headendArr:ArrayCollection=new ArrayCollection();
+			[Bindable]
+			private var comArray:ArrayCollection = new ArrayCollection([{label:"全部",code:""},{label:"统计",code:"1"},{label:"不统计",code:"0"}]);
+			[Bindable]
+			private var comprotocolArray:ArrayCollection = new ArrayCollection([{label:"全部",code:"0"},{label:"未迁移",code:"1"},{label:"已迁移",code:"2"}]);
+			
 			[Bindable]private var sTypeArray:ArrayCollection = new ArrayCollection([{label:"全部",value:""},{label:"采集点",value:"101"},{label:"遥控站",value:"102"}]);
 			[Bindable]private var runTypeArray:ArrayCollection = new ArrayCollection([{label:"全部",value:""},{label:"在线",value:"1"},{label:"不在线",value:"0"}]);
 			
@@ -166,7 +171,8 @@
 				}else{
 					obj.state="";
 				}
-				
+				obj.com_id = com_id.selectedItem.code;
+				obj.com_protocol = com_protocol.selectedItem.code;
 				pagebar.m_sendCmd(new RORequestParam("com.viewscenes.web.sysmgr.dicManager.HeadendTab","getHeadend",obj,_getHeadend,onfault));
 			}
 			
@@ -472,7 +478,18 @@
 			private function type(data:Object):String{							
 				return "遥控站";				
 			}
-			
+			private function reportLabelFunc(item:Object,gc:GridColumn):String{
+				if (item.reportLabelFunc=='0')
+					return "不统计"
+				else
+					return "统计";
+			}
+			private function proLabelFunc(item:Object,gc:GridColumn):String{
+				if (item.com_protocol=='2')
+					return "已迁移"
+				else
+					return "未迁移";
+			}
 			
 		]]>
 	</fx:Script>
@@ -491,7 +508,12 @@
 			<s:Label  textAlign="right" text="站点类型：" />
 			<s:ComboBox width="80" id="sType" dataProvider="{sTypeArray}" requireSelection="true" />				
 			<s:Label  textAlign="right" text="是否在线"  />
-			<s:ComboBox id="runType" dataProvider="{runTypeArray}"  requireSelection="true" width="80"/>				
+			<s:ComboBox id="runType" dataProvider="{runTypeArray}"  requireSelection="true" width="80"/>
+			<s:Label width="80" textAlign="right" text="是否统计：" fontSize="12"/>
+			<s:ComboBox width="100" id="com_id" dataProvider="{comArray}" requireSelection="true" styleName="text12"/>
+			<s:Label width="80" textAlign="right" text="是否迁移：" fontSize="12"/>
+			<s:ComboBox width="100" id="com_protocol" dataProvider="{comprotocolArray}" requireSelection="true" styleName="text12"/>
+			
 			<!--s:Label width="80" textAlign="right" text="是否删除"  "/>
 			<s:ComboBox id="is_delete" dataProvider="{isdelArray}"  requireSelection="true" styleName="text12" width="100"/-->			
 		</s:HGroup>
@@ -522,6 +544,8 @@
 						<s:GridColumn dataField="person" headerText="维护人"/>
 						<s:GridColumn dataField="person_phone" headerText="维护电话"/>
 						<s:GridColumn dataField="time_diff" headerText="时差"/>
+						<s:GridColumn dataField="com_id" headerText="是否统计" labelFunction="reportLabelFunc"/>
+						<s:GridColumn dataField="com_protocol" headerText="是否迁移" labelFunction="proLabelFunc"/>
 						<!--s:GridColumn dataField="type_id" headerText="站点类型" labelFunction="type"/-->
 						<s:GridColumn  minWidth="50" headerText="修改" itemRenderer="{RendererUtil.getButtonRenderer('修改',updateHead)}"/>
 						<s:GridColumn  minWidth="50" headerText="详情" itemRenderer="{RendererUtil.getButtonRenderer('详情',detailHead)}"/>
