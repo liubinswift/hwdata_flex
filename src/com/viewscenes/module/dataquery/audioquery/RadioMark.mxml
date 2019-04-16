@@ -253,11 +253,7 @@
 						var timeDiff:String = DateUtil.timeDiff(DateUtil.str2date(radioStremResultBean.start_datetime),DateUtil.str2date(radioStremResultBean.end_datetime),"sec");
 						markBean.file_length = timeDiff;
 						markBean.record_start_time = radioStremResultBean.start_datetime;
-						markBean.record_end_time = radioStremResultBean.end_datetime;
-						
-						
-						MM.show(radioStremResultBean.filename);
-						
+						markBean.record_end_time = radioStremResultBean.end_datetime;						
 						markBean.task_id = task.task_id;
 						//现在没有任务名称，不用填写
 						//					markBean.task_name = task.note;
@@ -266,7 +262,7 @@
 						markBean.counto = mark_o.text;
 						markBean.counts = mark_s.text;
 						markBean.description = getDesc();
-						markBean.mark_type = this.markType+"";//1:实时，2：录音
+						markBean.mark_type = "2";//1:实时，2：录音
 						markBean.file_length = radioStremResultBean.filesize;
 						markBean.file_name =radioStremResultBean.filename;
 						markBean.mark_file_url = radioStremResultBean.url;
