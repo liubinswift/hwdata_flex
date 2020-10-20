@@ -241,6 +241,7 @@
 							//							markBean.language_name = runplanBean.language_name;
 							markBean.runplan_id = runplanBean.runplan_id;
 							markBean.play_time = runplanBean.start_time + "-" + runplanBean.end_time;
+							markBean.languagename1 = runplanBean.language_name;
 						}
 						
 						markBean.level_value = radioStremResultBean.levelValue;
@@ -252,11 +253,7 @@
 						var timeDiff:String = DateUtil.timeDiff(DateUtil.str2date(radioStremResultBean.start_datetime),DateUtil.str2date(radioStremResultBean.end_datetime),"sec");
 						markBean.file_length = timeDiff;
 						markBean.record_start_time = radioStremResultBean.start_datetime;
-						markBean.record_end_time = radioStremResultBean.end_datetime;
-						
-						
-						
-						
+						markBean.record_end_time = radioStremResultBean.end_datetime;						
 						markBean.task_id = task.task_id;
 						//现在没有任务名称，不用填写
 						//					markBean.task_name = task.note;
@@ -265,7 +262,14 @@
 						markBean.counto = mark_o.text;
 						markBean.counts = mark_s.text;
 						markBean.description = getDesc();
-						markBean.mark_type = this.markType+"";//1:实时，2：录音
+						markBean.mark_type = "2";//1:实时，2：录音
+						markBean.file_length = radioStremResultBean.filesize;
+						markBean.file_name =radioStremResultBean.filename;
+						markBean.mark_file_url = radioStremResultBean.url;
+						markBean.fm_value = radioStremResultBean.fmModulation;
+						markBean.am_value=radioStremResultBean.amModulation;
+						markBean.offeset_value =radioStremResultBean.offset;
+						markBean.languagename1 = radioStremResultBean.language;
 						
 						markBean.remark = remark.text;
 						var sDate:String = DateUtil.date2str(new Date);
@@ -305,6 +309,7 @@
 							markBean.languagename2 = asrResBean.languageName2;
 							markBean.languagename1 = asrResBean.languageName1;
 						}
+						
 						this.radioMarkzstViewBean = markBean;
 						
 						RPCManager.sendCmd(new RORequestParam("com.viewscenes.web.dataquery.audioquery.MarkService","setMark",markBean,setMarkBack,DataManager.showErrorMessageBack));

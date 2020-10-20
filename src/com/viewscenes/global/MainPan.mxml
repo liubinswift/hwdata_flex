@@ -19,7 +19,7 @@
 	<s:HGroup width="100%" top="5" paddingLeft="15" paddingRight="3" gap="0">
 		<s:Label text="国家新闻出版广电总局573台版权所有" color="0x888888"/>
 		<s:Label text="|" color="0xffffff"/>
-		<s:Label text="Bate1.0" id="version" color="0x000000"/>
+		<s:Label text="2.0" id="version" color="0x000000"/>
 		<s:Spacer width="100%"/>
 		<s:HGroup gap="5">
 			<s:BitmapImage fillMode="clip" source="{getStyle('bannerLOGO')}"/>
