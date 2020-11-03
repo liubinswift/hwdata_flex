@@ -139,6 +139,11 @@
 				}
 				obj.headcodes = headcodes;
 				obj.rule = rule.selectedItem.data;	
+				if(doBefore.selected==true){
+					obj.doBefore = "1";
+				}else{
+					obj.doBefore = "0";
+				}
 				if(obj.headcodes != ""){
 					obj.headcodes += ",";
 				}
@@ -337,6 +342,7 @@
 		<s:CheckBox label="各遥控站、各地区、各大洲、可保证收听频时统计" id="conditon5"/>
 		<s:CheckBox label="各月各遥控站、各地区、各大洲和全球可听率对比" id="conditon6"/>
 		<s:CheckBox label="各频率可听度满意程度和可听率统计" id="conditon7"/>
+		<s:CheckBox label="统计换频前频率" id="doBefore" selected="false"/>
 		
 	</s:HGroup>
 	<s:HGroup width="100%" verticalAlign="middle">
